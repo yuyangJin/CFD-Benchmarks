@@ -1,7 +1,7 @@
-add_executable(RK 
-    RK.cpp)
+add_executable(Riemann2d
+	Riemann2d.cpp)
 # set_target_properties(
-# 	RK
+# 	Riemann2d
 
 # 	PROPERTIES
 # 	ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib"
