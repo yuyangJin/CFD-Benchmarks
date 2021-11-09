@@ -1,0 +1,15 @@
+add_executable(_fp_2di2hfscp_nosc
+	_fp_2di2hfscp_nosc.cpp
+)
+add_executable(_fp_2di2hfscp_fsc
+	_fp_2di2hfscp_fsc.cpp
+)
+add_executable(_fp_2di2hfscp_bsc
+	_fp_2di2hfscp_bsc.cpp
+)
+add_executable(_fp_2di2hfscp_2sc
+	_fp_2di2hfscp_2sc.cpp
+)
+add_executable(_fp_2di2hfscp_3sc
+	_fp_2di2hfscp_3sc.cpp
+)
