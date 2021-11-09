@@ -4,3 +4,6 @@ add_executable(_p_sw_fhscp
 add_executable(_p_sw_dfhscp
 	_p_sw_dfhscp.cpp
 )
+add_executable(_muscle_swwssr
+	_muscle_swwssr.cpp
+)
