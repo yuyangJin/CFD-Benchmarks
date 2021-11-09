@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <cmath> 
+#include <string.h>
 
 using namespace std; 
 
@@ -764,7 +765,7 @@ void Output(double U[Jx+5][Jy+5][4],double dx,double dy,double T)
 //主函数//
 int main()
 {
-	double T,dx,dy,dt,err;j
+	double T,dx,dy,dt,err;
 	double U_old[Jx+5][Jy+5][4];
 	double n=0;
 	FILE *fp;
