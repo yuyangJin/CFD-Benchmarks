@@ -1,0 +1,1269 @@
+#include <cstdlib>
+#include <iostream>
+#include <fstream>
+#include <iomanip> 
+#include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
+#define GAMA 1.4
+#define PI 3.1415926
+#define MIN(x,y)(((x)<(y))?(x):(y))
+#define MAX(x,y)(((x)>(y))?(x):(y))
+#define Lx 6.0
+#define Ly 2.5
+#define TT 2.0
+#define Sf 0.2
+#define Jx 600
+#define Jy 250
+
+double U[Jx+5][Jy+5][4],Un[Jx+5][Jy+5][4],U1[Jx+5][Jy+5][4],U2[Jx+5][Jy+5][4],Fz[Jx+5][Jy+5][4],Ff[Jx+5][Jy+5][4],fz[Jx+5][Jy+5][4],ff[Jx+5][Jy+5][4];
+double Gz[Jx+5][Jy+5][4],Gf[Jx+5][Jy+5][4],gz[Jx+5][Jy+5][4],gf[Jx+5][Jy+5][4],p[Jx+5][Jy+5];//U就是用来储存那四个变量，Un是指滤波以后带黏性的，U1和U2是龙格库塔方法中用到的中间变量，然后小字母z指的是“+”，f指的是“-”
+
+//我的虚拟网格是两层
+
+//给全场都赋初值，包括实体网格，虚拟网格和两个凹坑
+void Initial(double U[Jx+5][Jy+5][4],double& dx,double& dy)
+{
+	int i,j;
+	dx=Lx/Jx;
+	dy=Ly/Jy;
+	double rou1=1,u1=0,v1=0,a1=1,p1=0.71429;
+	double rou2=3.85714,p2=7.381,u2=2.22223,v2=0;
+	for(i=0;i<=Jx+4;i++)    //初始条件  这里先把所有区域都赋值u1 v1 p1 rou1
+	{
+		for(j=0;j<=Jy+4;j++)
+		{
+			U[i][j][0]=rou1;
+			U[i][j][1]=rou1*u1;
+			U[i][j][2]=rou1*v1;
+			U[i][j][3]=p1/(GAMA-1)+0.5*rou1*(u1*u1+v1*v1);
+			
+		}
+	}
+    //边界以外赋零，这里是给那些凹坑的赋值成为了0
+	for(j=0;j<=49;j++)          
+	{
+		for(i=0;i<=100;i++)
+		{
+			U[i][j][0]=0;
+			U[i][j][1]=0;
+			U[i][j][2]=0;
+			U[i][j][3]=0;	
+		}
+		for(i=204;i<=300;i++)
+		{
+			U[i][j][0]=0;
+			U[i][j][1]=0;
+			U[i][j][2]=0;
+			U[i][j][3]=0;	
+		}
+		for(i=404;i<=604;i++)
+		{
+			U[i][j][0]=0;
+			U[i][j][1]=0;
+			U[i][j][2]=0;
+			U[i][j][3]=0;	
+		}
+	}
+
+}
+//CFL稳定性条件，这个子程序是用来计算时间步长的
+double CFL(double U[Jx+5][Jy+5][4],double dx,double dy)
+{
+	int i,j;
+	double u,v,rou,a,vel,p,maxvel;
+	maxvel=pow(10,-100);
+	for(i=0;i<=Jx+4;i++)    
+	{
+		for(j=0;j<=Jy+4;j++)  //这里对全场都进行了运算
+		{
+			if(U[i][j][0]!=0)
+			{
+				rou=U[i][j][0];
+				u=U[i][j][1]/U[i][j][0];
+				v=U[i][j][2]/U[i][j][0];
+				p=(GAMA-1)*(U[i][j][3]-0.5*rou*(u*u+v*v));
+				a=pow(GAMA*p/rou,0.5);
+				vel=a+pow(u*u+v*v,0.5);
+				if(vel>=maxvel)maxvel=vel;
+			}
+		}
+	}
+	return Sf*MIN(dx,dy)/maxvel;
+}
+//边界函数，将边界上的虚拟网格赋初值,并且处理特殊的凹凸角点,另外对边界上面的法相速度强制赋零
+void bound(double U[Jx+5][Jy+5][4],double dx,double dy)
+{
+	int i,j,k;
+	double rou1=1,u1=0,v1=0,a1=1,p1=0.71429;
+	double rou2=3.85714,p2=7.381,u2=2.22223,v2=0;	
+	for(i=0;i<=1;i++)         //左边界条件，我认为的入口包括上下的虚拟网格
+	{
+		for(j=50;j<=254;j++)
+		{
+			U[i][j][0]=rou2;
+			U[i][j][1]=rou2*u2;
+			U[i][j][2]=rou2*v2;
+			U[i][j][3]=p2/(GAMA-1)+0.5*rou2*(u2*u2+v2*v2);
+		}
+	}
+	for(i=603;i<=604;i++)         //右边界条件，满足连续
+	{
+		for(j=50;j<=254;j++)
+		{
+			U[i][j][0]=U[i-1][j][0];
+			U[i][j][1]=U[i-1][j][1];
+			U[i][j][2]=U[i-1][j][2];
+			U[i][j][3]=U[i-1][j][3];
+		}
+	}
+	for(i=2;i<=602;i++)       //虚拟节点的处理,这里采用镜面反射,标量和切向速度取相同值,法相速度取相反值
+	{
+		for(j=253;j<=254;j++)     //这里是顶边界
+		{
+			U[i][j][0]=U[i][504-j][0];
+			U[i][j][1]=U[i][504-j][1];//U是平行的，所以为相同值
+			U[i][j][2]=-U[i][504-j][2];//V是法向的，为负值
+			U[i][j][3]=U[i][504-j][3];
+		}
+	}
+	for(i=2;i<=101;i++)//这里是0-1的横向边界
+	{
+		for(j=50;j<=51;j++)
+		{
+			U[i][j][0]=U[i][104-j][0];
+			U[i][j][1]=U[i][104-j][1];//U是平行的，所以为相同值
+			U[i][j][2]=-U[i][104-j][2];//V是法向的，为负值
+			U[i][j][3]=U[i][104-j][3];
+		}
+	}
+	for(i=103;i<=201;i++)//这里是1-2的横向边界
+	{
+		for(j=0;j<=1;j++)
+		{
+			U[i][j][0]=U[i][4-j][0];
+			U[i][j][1]=U[i][4-j][1];//U是平行的，所以为相同值
+			U[i][j][2]=-U[i][4-j][2];//V是法向的，为负值
+			U[i][j][3]=U[i][4-j][3];
+		}
+	}
+	for(i=203;i<=301;i++)//这里是2-3的横向边界
+	{
+		for(j=50;j<=51;j++)
+		{
+			U[i][j][0]=U[i][104-j][0];
+			U[i][j][1]=U[i][104-j][1];//U是平行的，所以为相同值
+			U[i][j][2]=-U[i][104-j][2];//V是法向的，为负值
+			U[i][j][3]=U[i][104-j][3];
+		}
+	}
+	for(i=303;i<=401;i++)//这里是3-4的横向边界
+	{
+		for(j=0;j<=1;j++)
+		{
+			U[i][j][0]=U[i][4-j][0];
+			U[i][j][1]=U[i][4-j][1];//U是平行的，所以为相同值
+			U[i][j][2]=-U[i][4-j][2];//V是法向的，为负值
+			U[i][j][3]=U[i][4-j][3];
+		}
+	}
+	for(i=403;i<=602;i++)//这里是4-6的横向边界
+	{
+		for(j=50;j<=51;j++)
+		{
+			U[i][j][0]=U[i][104-j][0];
+			U[i][j][1]=U[i][104-j][1];//U是平行的，所以为相同值
+			U[i][j][2]=-U[i][104-j][2];//V是法向的，为负值
+			U[i][j][3]=U[i][104-j][3];
+		}
+	}
+	for(i=101;i<=102;i++)//这里是1的竖向边界
+	{
+		for(j=0;j<=50;j++)
+		{
+			U[i][j][0]=U[206-i][j][0];
+			U[i][j][1]=-U[206-i][j][1];//U是法向的，所以为负值
+			U[i][j][2]=U[206-i][j][2];//V是平行的，为相同值
+			U[i][j][3]=U[206-i][j][3];
+		}
+	}
+	for(i=202;i<=203;i++)//这里是2的竖向边界
+	{
+		for(j=0;j<=50;j++)
+		{
+			U[i][j][0]=U[402-i][j][0];
+			U[i][j][1]=-U[402-i][j][1];//U是法向的，所以为负值
+			U[i][j][2]=U[402-i][j][2];//V是平行的，为相同值
+			U[i][j][3]=U[402-i][j][3];
+		}
+	}
+	for(i=301;i<=302;i++)//这里是3的竖向边界
+	{
+		for(j=0;j<=50;j++)
+		{
+			U[i][j][0]=U[606-i][j][0];
+			U[i][j][1]=-U[606-i][j][1];//U是法向的，所以为负值
+			U[i][j][2]=U[606-i][j][2];//V是平行的，为相同值
+			U[i][j][3]=U[606-i][j][3];
+		}
+	}
+	for(i=402;i<=403;i++)//这里是4的竖向边界
+	{
+		for(j=0;j<=50;j++)
+		{
+			U[i][j][0]=U[802-i][j][0];
+			U[i][j][1]=-U[802-i][j][1];//U是法向的，所以为负值
+			U[i][j][2]=U[802-i][j][2];//V是平行的，为相同值
+			U[i][j][3]=U[802-i][j][3];
+		}
+	}
+
+
+	//边界上强行赋法向为零
+	for(i=2;i<=602;i++)//顶边界V为0
+	{
+		U[i][252][2]=0;
+	}
+	for(i=2;i<=103;i++)//横向0-1边界V为0
+	{
+	    U[i][52][2]=0;
+	}
+	for(i=103;i<=201;i++)//横向1-2边界V为0
+	{
+	    U[i][2][2]=0;
+	}
+	for(i=201;i<=303;i++)//横向2-3边界V为0
+	{
+	    U[i][52][2]=0;
+	}
+	for(i=303;i<=401;i++)//横向3-4边界V为0
+	{
+	    U[i][2][2]=0;
+	}
+	for(i=401;i<=602;i++)//横向4-6边界V为0
+	{
+	    U[i][52][2]=0;
+	}
+	for(j=2;j<=52;j++)//纵向1边界U为0
+	{
+	    U[103][j][1]=0;
+	}
+	for(j=2;j<=52;j++)//纵向2边界U为0
+	{
+	    U[201][j][1]=0;
+	}
+	for(j=2;j<=52;j++)//纵向3边界U为0
+	{
+	    U[303][j][1]=0;
+	}
+	for(j=2;j<=52;j++)//纵向4边界U为0
+	{
+	    U[401][j][1]=0;
+	}
+
+
+
+
+		//角点的虚拟网格特殊处理 
+	for(k=0;k<=3;k++)//角点AB以及其附近虚拟节点处理,处理方法用的是课本298页的处理方法，一共4个A角点，4个B角点，然后其实可以发现，B角点是不用处理的
+	{
+		U[102][51][k]=0.5*(U[104][51][k]+U[102][53][k]);
+		U[202][51][k]=0.5*(U[202][53][k]+U[200][51][k]);
+		U[302][51][k]=0.5*(U[304][51][k]+U[302][53][k]);
+		U[402][51][k]=0.5*(U[400][51][k]+U[402][53][k]);
+	}
+	U[101][50][0]=U[103][52][0];
+	U[101][50][1]=-U[103][52][1];
+	U[101][50][2]=-U[103][52][2];
+	U[101][50][3]=U[103][52][3];//横坐标为1附近的那个点
+	U[203][50][0]=U[201][52][0];
+	U[203][50][1]=-U[201][52][1];
+	U[203][50][2]=-U[201][52][2];
+	U[203][50][3]=U[201][52][3];//横坐标为2附近的那个点
+	U[301][50][0]=U[303][52][0];
+	U[301][50][1]=-U[303][52][1];
+	U[301][50][2]=-U[303][52][2];
+	U[301][50][3]=U[303][52][3];//横坐标为3附近的那个点
+	U[403][50][0]=U[401][52][0];
+	U[403][50][1]=-U[401][52][1];
+	U[403][50][2]=-U[401][52][2];
+	U[403][50][3]=U[401][52][3];//横坐标为4附近的那个点
+}
+
+//下面这个程序是计算流量矢量分裂的，这里是x反向
+void FENLIEfzff(double U[4],double fz[4],double ff[4])
+{
+	double H,rou,u,v,p,a,Lambda1,Lambda2,Lambda3,Lambda4,Lambda1z,Lambda2p,Lambda3p,Lambda4p,Lambda1f,Lambda2d,Lambda3d,Lambda4d;
+	rou=U[0];
+	u=U[1]/U[0];
+	v=U[2]/U[0];
+	p=(GAMA-1)*(U[3]-0.5*rou*(u*u+v*v));
+	a=pow(GAMA*p/rou,0.5);
+	H=a*a/(GAMA-1)+0.5*(u*u+v*v);
+	Lambda1=u;
+	Lambda2=u;
+	Lambda3=u-a;
+	Lambda4=u+a;
+	//计算f+
+	Lambda1z=0.5*(Lambda1+pow(Lambda1*Lambda1+pow(10,-8),0.5));
+	Lambda2p=0.5*(Lambda2+pow(Lambda2*Lambda2+pow(10,-8),0.5));
+	Lambda3p=0.5*(Lambda3+pow(Lambda3*Lambda3+pow(10,-8),0.5));
+	Lambda4p=0.5*(Lambda4+pow(Lambda4*Lambda4+pow(10,-8),0.5));
+	fz[0]=rou/2.0/GAMA*(2*(GAMA-1)*Lambda1z+Lambda3p+Lambda4p);
+	fz[1]=rou/2.0/GAMA*(2*u*(GAMA-1)*Lambda1z+(u-a)*Lambda3p+(u+a)*Lambda4p);
+	fz[2]=rou/2.0/GAMA*(v*2*(GAMA-1)*Lambda1z+v*Lambda3p+v*Lambda4p);
+	fz[3]=rou/2.0/GAMA*(2*((GAMA-1)*H-a*a)*Lambda1z+(H-a*u)*Lambda3p+(H+a*u)*Lambda4p);
+	//这里算的是f-
+	Lambda1f=0.5*(Lambda1-pow(Lambda1*Lambda1+pow(10,-8),0.5));
+	Lambda2d=0.5*(Lambda2-pow(Lambda2*Lambda2+pow(10,-8),0.5));
+	Lambda3d=0.5*(Lambda3-pow(Lambda3*Lambda3+pow(10,-8),0.5));
+	Lambda4d=0.5*(Lambda4-pow(Lambda4*Lambda4+pow(10,-8),0.5));
+	ff[0]=rou/2.0/GAMA*(2*(GAMA-1)*Lambda1f+Lambda3d+Lambda4d);
+	ff[1]=rou/2.0/GAMA*(2*u*(GAMA-1)*Lambda1f+(u-a)*Lambda3d+(u+a)*Lambda4d);
+	ff[2]=rou/2.0/GAMA*(v*2*(GAMA-1)*Lambda1f+v*Lambda3d+v*Lambda4d);
+	ff[3]=rou/2.0/GAMA*(2*((GAMA-1)*H-a*a)*Lambda1f+(H-a*u)*Lambda3d+(H+a*u)*Lambda4d);
+}
+
+
+void Compact_x(double U[Jx+5][Jy+5][4],double Un[Jx+5][Jy+5][4],double Fz[Jx+5][Jy+5][4],double Ff[Jx+5][Jy+5][4],double fz[Jx+5][Jy+5][4],double ff[Jx+5][Jy+5][4],
+			   double dx,double dy,double dt,double p[Jx+5][Jy+5])//x方向的紧致算法
+{
+	int i,j,k;
+	double r=dt/dx;
+	double q,rou,u,v;
+	double nu;
+	for(i=0;i<=Jx+4;i++)
+	{
+		for(j=0;j<=Jy+4;j++)
+		{
+			if(U[i][j][0]!=0)
+			{
+				rou=U[i][j][0];
+				u=U[i][j][1]/U[i][j][0];
+				v=U[i][j][2]/U[i][j][0];
+				p[i][j]=(GAMA-1)*(U[i][j][3]-0.5*rou*(u*u+v*v));
+			}
+		}
+	}//求出每个节点的密度、速度和压力
+	nu=0.25;//这个值是参考的课本
+	//人工黏性，只给计算区域加上。也就是实体网格，我分成了三个部分，以后也会按照这三个部分来计算，分别是上面一个大的和下面两个小的
+	for(i=2;i<=Jx+2;i++)    
+	{
+		for(j=52;j<=252;j++)
+		{
+			q=fabs(fabs(U[i+1][j][0]-U[i][j][0])-fabs(U[i][j][0]-U[i-1][j][0]))/(fabs(U[i+1][j][0]-U[i][j][0])+fabs(U[i][j][0]-U[i-1][j][0])+pow(10,-100));			
+			for(k=0;k<=3;k++)
+			{
+				Un[i][j][k]=U[i][j][k]+0.5*nu*q*(U[i+1][j][k]-2*U[i][j][k]+U[i-1][j][k]);
+			}
+		}
+	}
+	for(i=103;i<=201;i++)
+	{
+		for(j=2;j<=51;j++)
+		{
+			q=fabs(fabs(U[i+1][j][0]-U[i][j][0])-fabs(U[i][j][0]-U[i-1][j][0]))/(fabs(U[i+1][j][0]-U[i][j][0])+fabs(U[i][j][0]-U[i-1][j][0])+pow(10,-100));	
+			for(k=0;k<=3;k++)
+			{
+				Un[i][j][k]=U[i][j][k]+0.5*nu*q*(U[i+1][j][k]-2*U[i][j][k]+U[i-1][j][k]);
+			}
+		}
+	}
+	for(i=303;i<=401;i++)
+	{
+		for(j=2;j<=51;j++)
+		{
+			q=fabs(fabs(U[i+1][j][0]-U[i][j][0])-fabs(U[i][j][0]-U[i-1][j][0]))/(fabs(U[i+1][j][0]-U[i][j][0])+fabs(U[i][j][0]-U[i-1][j][0])+pow(10,-100));	
+			for(k=0;k<=3;k++)
+			{
+				Un[i][j][k]=U[i][j][k]+0.5*nu*q*(U[i+1][j][k]-2*U[i][j][k]+U[i-1][j][k]);
+			}
+		}
+	}//然后用带有黏性的替换下来原来的量
+	for(i=2;i<=Jx+2;i++)    
+	{
+		for(j=52;j<=252;j++)
+		{
+			for(k=0;k<=3;k++)
+			{
+				U[i][j][k]=Un[i][j][k];
+			}
+		}
+	}
+	for(i=103;i<=201;i++)    
+	{
+		for(j=2;j<=51;j++)
+		{
+			for(k=0;k<=3;k++)
+			{
+				U[i][j][k]=Un[i][j][k];
+			}
+		}
+	}
+    for(i=303;i<=401;i++)    
+	{
+		for(j=2;j<=51;j++)
+		{
+			for(k=0;k<=3;k++)
+			{
+				U[i][j][k]=Un[i][j][k];
+			}
+		}
+	}
+	//计算fz和ff，也就是课本上面的f+和f-，这个是全场的网格都有，因为凹坑那里计算了也不影响，所以省的分区了，就直接全场计算
+	for(i=0;i<=Jx+4;i++)
+	{
+		for(j=0;j<=Jy+4;j++)
+		{
+			if(U[i][j][0]!=0)
+			{
+				FENLIEfzff(U[i][j],fz[i][j],ff[i][j]);
+			}
+		}
+	}
+	//还是分成三个区，计算F+开始从左往右算的的初始值，这里的计算开始于第二层虚拟网格
+	for(j=52;j<=252;j++)
+	{
+		for(k=0;k<=3;k++)
+		{
+			Fz[1][j][k]=0.5*(3*(fz[2][j][k]-fz[1][j][k])-(fz[3][j][k]-fz[2][j][k]));
+		}
+	}
+	for(j=2;j<=51;j++)
+	{
+		for(k=0;k<=3;k++)
+		{
+			Fz[102][j][k]=0.5*(3*(fz[103][j][k]-fz[102][j][k])-(fz[104][j][k]-fz[103][j][k]));
+		}
+	}
+	for(j=2;j<=51;j++)
+	{
+		for(k=0;k<=3;k++)
+		{
+			Fz[302][j][k]=0.5*(3*(fz[303][j][k]-fz[302][j][k])-(fz[304][j][k]-fz[303][j][k]));
+		}
+	}
+	//分区计算全场的F+，还是那三个区域
+	for(i=2;i<=Jx+2;i++)
+	{
+		for(j=52;j<=252;j++)
+		{
+			if(U[i][j][0]!=0)
+			{
+				for(k=0;k<=3;k++)
+				{
+					Fz[i][j][k]=-0.5*Fz[i-1][j][k]+5.0/4.0*(fz[i][j][k]-fz[i-1][j][k])+0.25*(fz[i+1][j][k]-fz[i][j][k]);
+				}
+			}
+		}
+	}
+	for(i=103;i<=201;i++)
+	{
+		for(j=2;j<=51;j++)
+		{
+			if(U[i][j][0]!=0)
+			{
+				for(k=0;k<=3;k++)
+				{
+					Fz[i][j][k]=-0.5*Fz[i-1][j][k]+5.0/4.0*(fz[i][j][k]-fz[i-1][j][k])+0.25*(fz[i+1][j][k]-fz[i][j][k]);
+				}
+			}
+		}
+	}
+	for(i=303;i<=401;i++)
+	{
+		for(j=2;j<=51;j++)
+		{
+			if(U[i][j][0]!=0)
+			{
+				for(k=0;k<=3;k++)
+				{
+					Fz[i][j][k]=-0.5*Fz[i-1][j][k]+5.0/4.0*(fz[i][j][k]-fz[i-1][j][k])+0.25*(fz[i+1][j][k]-fz[i][j][k]);
+				}
+			}
+		}
+	}
+	//分区计算F-的初始值，从右往左算，也是开始于第二层虚拟网格
+	for(j=52;j<=252;j++)
+	{
+		for(k=0;k<=3;k++)
+		{
+			Ff[Jx+3][j][k]=0.5*(3*(ff[Jx+3][j][k]-ff[Jx+2][j][k])-(ff[Jx+2][j][k]-ff[Jx+1][j][k]));
+		}
+	}
+	for(j=2;j<=51;j++)
+	{
+		for(k=0;k<=3;k++)
+		{
+			Ff[402][j][k]=0.5*(3*(ff[402][j][k]-ff[401][j][k])-(ff[401][j][k]-ff[400][j][k]));
+		}
+	}
+	for(j=2;j<=51;j++)
+	{
+		for(k=0;k<=3;k++)
+		{
+			Ff[202][j][k]=0.5*(3*(ff[202][j][k]-ff[201][j][k])-(ff[201][j][k]-ff[200][j][k]));
+		}
+	}
+	//分区计算全场的F-值
+	for(i=Jx+2;i>=2;i--)
+	{
+		for(j=52;j<=252;j++)
+		{
+			if(U[i][j][0]!=0)
+			{
+				for(k=0;k<=3;k++)
+				{
+					Ff[i][j][k]=-0.5*Ff[i+1][j][k]+5.0/4.0*(ff[i+1][j][k]-ff[i][j][k])+0.25*(ff[i][j][k]-ff[i-1][j][k]);
+				}
+			}
+		}
+	}
+	for(i=401;i>=303;i--)
+	{
+		for(j=2;j<=51;j++)
+		{
+			if(U[i][j][0]!=0)
+			{
+				for(k=0;k<=3;k++)
+				{
+					Ff[i][j][k]=-0.5*Ff[i+1][j][k]+5.0/4.0*(ff[i+1][j][k]-ff[i][j][k])+0.25*(ff[i][j][k]-ff[i-1][j][k]);
+				}
+			}
+		}
+	}
+	for(i=201;i>=103;i--)
+	{
+		for(j=2;j<=51;j++)
+		{
+			if(U[i][j][0]!=0)
+			{
+				for(k=0;k<=3;k++)
+				{
+					Ff[i][j][k]=-0.5*Ff[i+1][j][k]+5.0/4.0*(ff[i+1][j][k]-ff[i][j][k])+0.25*(ff[i][j][k]-ff[i-1][j][k]);
+				}
+			}
+		}
+	}
+}
+
+void RK_x(double U[Jx+5][Jy+5][4],double Un[Jx+5][Jy+5][4],double U1[Jx+5][Jy+5][4],double U2[Jx+5][Jy+5][4],double Fz[Jx+5][Jy+5][4],double Ff[Jx+5][Jy+5][4],
+			   double fz[Jx+5][Jy+5][4],double ff[Jx+5][Jy+5][4],double dx,double dy,double dt,double p[Jx+5][Jy+5])//龙格库塔方法计算
+{
+	int i,j,k;
+	dt=CFL(U,dx,dy);
+	double r=dt/dx;
+	//计算U1
+	for(i=2;i<=Jx+2;i++)
+	{
+		for(j=52;j<=252;j++)
+		{
+			if(U[i][j][0]!=0)
+			{
+				for(k=0;k<=3;k++)
+				{
+					U1[i][j][k]=U[i][j][k]-r*(Fz[i][j][k]+Ff[i][j][k]);
+				}
+			}
+		}
+	}
+	for(i=103;i<=201;i++)       
+	{
+		for(j=2;j<=51;j++)
+		{
+			if(U[i][j][0]!=0)
+			{
+				for(k=0;k<=3;k++)
+				{
+					U1[i][j][k]=U[i][j][k]-r*(Fz[i][j][k]+Ff[i][j][k]);
+				}
+			}
+		}
+	}
+	for(i=303;i<=401;i++)       
+	{
+		for(j=2;j<=51;j++)
+		{
+			if(U[i][j][0]!=0)
+			{
+				for(k=0;k<=3;k++)
+				{
+					U1[i][j][k]=U[i][j][k]-r*(Fz[i][j][k]+Ff[i][j][k]);
+				}
+			}
+		}
+	}
+	//U1求边界条件
+	bound(U1,dx,dy);
+	//计算dt
+	dt=CFL(U1,dx,dy);
+	r=dt/dx;
+	//用U1算Fzd，这里每计算一次都要重新算定义边界和时间步长以及分裂结果，因为这些东西是随着U的值发生变化的
+	Compact_x(U1,Un,Fz,Ff,fz,ff,dx,dy,dt,p);
+	//计算U2
+    for(i=2;i<=Jx+2;i++)
+	{
+		for(j=52;j<=252;j++)
+		{
+			if(U[i][j][0]!=0)
+			{
+				for(k=0;k<=3;k++)
+				{
+					U2[i][j][k]=0.75*U[i][j][k]+0.25*U1[i][j][k]-r*(Fz[i][j][k]+Ff[i][j][k]);
+				}
+			}
+		}
+	}
+	for(i=103;i<=201;i++)       
+	{
+		for(j=2;j<=51;j++)
+		{
+			if(U[i][j][0]!=0)
+			{
+				for(k=0;k<=3;k++)
+				{
+					U2[i][j][k]=0.75*U[i][j][k]+0.25*U1[i][j][k]-r*(Fz[i][j][k]+Ff[i][j][k]);
+				}
+			}
+		}
+	}
+	for(i=303;i<=401;i++)       
+	{
+		for(j=2;j<=51;j++)
+		{
+			if(U[i][j][0]!=0)
+			{
+				for(k=0;k<=3;k++)
+				{
+					U2[i][j][k]=0.75*U[i][j][k]+0.25*U1[i][j][k]-r*(Fz[i][j][k]+Ff[i][j][k]);
+				}
+			}
+		}
+	}
+	bound(U2,dx,dy);
+	dt=CFL(U2,dx,dy);
+	r=dt/dx;
+	Compact_x(U2,Un,Fz,Ff,fz,ff,dx,dy,dt,p);
+	//计算算U3-，也就是下一个时间步以后的U
+	 for(i=2;i<=Jx+2;i++)
+	{
+		for(j=52;j<=252;j++)
+		{
+			if(U[i][j][0]!=0)
+			{
+				for(k=0;k<=3;k++)
+				{
+					U[i][j][k]=1.0/3.0*U[i][j][k]+2.0/3.0*U2[i][j][k]-2.0/3.0*r*(Fz[i][j][k]+Ff[i][j][k]);
+				}
+			}
+		}
+	}
+	for(i=103;i<=201;i++)       
+	{
+		for(j=2;j<=51;j++)
+		{
+			if(U[i][j][0]!=0)
+			{
+				for(k=0;k<=3;k++)
+				{
+					U[i][j][k]=1.0/3.0*U[i][j][k]+2.0/3.0*U2[i][j][k]-2.0/3.0*r*(Fz[i][j][k]+Ff[i][j][k]);
+				}
+			}
+		}
+	}
+	for(i=303;i<=401;i++)       
+	{
+		for(j=2;j<=51;j++)
+		{
+			if(U[i][j][0]!=0)
+			{
+				for(k=0;k<=3;k++)
+				{
+					U[i][j][k]=1.0/3.0*U[i][j][k]+2.0/3.0*U2[i][j][k]-2.0/3.0*r*(Fz[i][j][k]+Ff[i][j][k]);
+				}
+			}
+		}
+	}
+
+}
+//下面的子程序是y方向的矢量流量分裂
+void FENLIEgzgf(double U[4],double gz[4],double gf[4])
+{
+	double H,rou,u,v,p,a,Lambda1,Lambda2,Lambda3,Lambda4,Lambda1z,Lambda2p,Lambda3p,Lambda4p,Lambda1f,Lambda2d,Lambda3d,Lambda4d;
+	//计算gz即g+
+	rou=U[0];
+	u=U[1]/U[0];
+	v=U[2]/U[0];
+	p=(GAMA-1)*(U[3]-0.5*rou*(u*u+v*v));
+	a=pow(GAMA*p/rou,0.5);
+	H=a*a/(GAMA-1)+0.5*(u*u+v*v);
+	Lambda1=v;
+	Lambda2=v;
+	Lambda3=v-a;
+	Lambda4=v+a;
+	Lambda1z=0.5*(Lambda1+pow(Lambda1*Lambda1+pow(10,-8),0.5));
+	Lambda2p=0.5*(Lambda2+pow(Lambda2*Lambda2+pow(10,-8),0.5));
+	Lambda3p=0.5*(Lambda3+pow(Lambda3*Lambda3+pow(10,-8),0.5));
+	Lambda4p=0.5*(Lambda4+pow(Lambda4*Lambda4+pow(10,-8),0.5));
+	gz[0]=rou/2.0/GAMA*(2*(GAMA-1)*Lambda1z+Lambda3p+Lambda4p);
+	gz[1]=rou/2.0/GAMA*(u*2*(GAMA-1)*Lambda1z+u*Lambda3p+u*Lambda4p);
+	gz[2]=rou/2.0/GAMA*(2*v*(GAMA-1)*Lambda1z+(v-a)*Lambda3p+(v+a)*Lambda4p);
+	gz[3]=rou/2.0/GAMA*(2*((GAMA-1)*H-a*a)*Lambda1z+(H-a*v)*Lambda3p+(H+a*v)*Lambda4p);
+	//计算gf即f-的函数
+	Lambda1f=0.5*(Lambda1-pow(Lambda1*Lambda1+pow(10,-8),0.5));
+	Lambda2d=0.5*(Lambda2-pow(Lambda2*Lambda2+pow(10,-8),0.5));
+	Lambda3d=0.5*(Lambda3-pow(Lambda3*Lambda3+pow(10,-8),0.5));
+	Lambda4d=0.5*(Lambda4-pow(Lambda4*Lambda4+pow(10,-8),0.5));
+	gf[0]=rou/2.0/GAMA*(2*(GAMA-1)*Lambda1f+Lambda3d+Lambda4d);
+	gf[1]=rou/2.0/GAMA*(u*2*(GAMA-1)*Lambda1f+u*Lambda3d+u*Lambda4d);
+	gf[2]=rou/2.0/GAMA*(2*v*(GAMA-1)*Lambda1f+(v-a)*Lambda3d+(v+a)*Lambda4d);
+	gf[3]=rou/2.0/GAMA*(2*((GAMA-1)*H-a*a)*Lambda1f+(H-a*v)*Lambda3d+(H+a*v)*Lambda4d);
+}
+
+void Compact_y(double U[Jx+5][Jy+5][4],double Un[Jx+5][Jy+5][4],double Gz[Jx+5][Jy+5][4],double Gf[Jx+5][Jy+5][4],
+			   double gz[Jx+5][Jy+5][4],double gf[Jx+5][Jy+5][4],double dx,double dy,double dt,double p[Jx+5][Jy+5])
+{
+	int i,j,k;
+	double r=dt/dy;
+	double q,rou,u,v;
+	double nu;
+	for(i=0;i<=Jx+4;i++)
+	{
+		for(j=0;j<=Jy+4;j++)
+		{
+			if(U[i][j][0]!=0)
+			{
+				rou=U[i][j][0];
+			    u=U[i][j][1]/U[i][j][0];
+			    v=U[i][j][2]/U[i][j][0];
+			    p[i][j]=(GAMA-1)*(U[i][j][3]-0.5*rou*(u*u+v*v));
+			}
+		}
+	}
+	nu=0.25;
+	//人工黏性，只给实网格计算区域加了
+	for(i=2;i<=Jx+2;i++)    
+	{
+		for(j=52;j<=252;j++)
+		{
+			q=fabs(fabs(U[i][j+1][0]-U[i][j][0])-fabs(U[i][j][0]-U[i][j-1][0]))/(fabs(U[i][j+1][0]-U[i][j][0])+fabs(U[i][j][0]-U[i][j-1][0])+pow(10,-100));		
+			for(k=0;k<=3;k++)
+			{
+				Un[i][j][k]=U[i][j][k]+0.5*nu*q*(U[i][j+1][k]-2*U[i][j][k]+U[i][j-1][k]);
+			}
+		}
+	}
+    for(i=103;i<=201;i++)    
+	{
+		for(j=2;j<=51;j++)
+		{
+			q=fabs(fabs(U[i][j+1][0]-U[i][j][0])-fabs(U[i][j][0]-U[i][j-1][0]))/(fabs(U[i][j+1][0]-U[i][j][0])+fabs(U[i][j][0]-U[i][j-1][0])+pow(10,-100));		
+			for(k=0;k<=3;k++)
+			{
+				Un[i][j][k]=U[i][j][k]+0.5*nu*q*(U[i][j+1][k]-2*U[i][j][k]+U[i][j-1][k]);
+			}
+		}
+	}
+	for(i=303;i<=401;i++)    
+	{
+		for(j=2;j<=51;j++)
+		{
+			q=fabs(fabs(U[i][j+1][0]-U[i][j][0])-fabs(U[i][j][0]-U[i][j-1][0]))/(fabs(U[i][j+1][0]-U[i][j][0])+fabs(U[i][j][0]-U[i][j-1][0])+pow(10,-100));		
+			for(k=0;k<=3;k++)
+			{
+				Un[i][j][k]=U[i][j][k]+0.5*nu*q*(U[i][j+1][k]-2*U[i][j][k]+U[i][j-1][k]);
+			}
+		}
+	}//然后把算好的带有黏性的用来替换掉原来的值
+	for(i=2;i<=Jx+2;i++)    
+	{
+		for(j=52;j<=252;j++)
+		{
+			for(k=0;k<=3;k++)
+			{
+				U[i][j][k]=Un[i][j][k];
+			}
+		}
+	}
+	for(i=103;i<=201;i++)    
+	{
+		for(j=2;j<=51;j++)
+		{
+			for(k=0;k<=3;k++)
+			{
+				U[i][j][k]=Un[i][j][k];
+			}
+		}
+	}
+    for(i=303;i<=401;i++)    
+	{
+		for(j=2;j<=51;j++)
+		{
+			for(k=0;k<=3;k++)
+			{
+				U[i][j][k]=Un[i][j][k];
+			}
+		}
+	}
+	//计算gz和gf，这个是全场都算了
+	for(i=0;i<=Jx+4;i++)
+	{
+		for(j=0;j<=Jy+4;j++)
+		{
+			if(U[i][j][0]!=0)
+			{
+				FENLIEgzgf(U[i][j],gz[i][j],gf[i][j]);
+			}
+		}
+	}
+	//分区计算G+的初始值，是第二层虚拟网格的
+	for(i=2;i<=102;i++)
+	{
+		for(k=0;k<=3;k++)
+		{
+			Gz[i][51][k]=0.5*(3*(gz[i][52][k]-gz[i][51][k])-(gz[i][53][k]-gz[i][52][k]));
+		}
+	}
+	for(i=103;i<=201;i++)
+	{
+		for(k=0;k<=3;k++)
+		{
+			Gz[i][1][k]=0.5*(3*(gz[i][2][k]-gz[i][1][k])-(gz[i][3][k]-gz[i][2][k]));
+		}
+	}
+    for(i=202;i<=302;i++)
+	{
+		for(k=0;k<=3;k++)
+		{
+			Gz[i][51][k]=0.5*(3*(gz[i][52][k]-gz[i][51][k])-(gz[i][53][k]-gz[i][52][k]));
+		}
+	}
+	for(i=303;i<=401;i++)
+	{
+		for(k=0;k<=3;k++)
+		{
+			Gz[i][1][k]=0.5*(3*(gz[i][2][k]-gz[i][1][k])-(gz[i][3][k]-gz[i][2][k]));
+		}
+	}
+	for(i=402;i<=602;i++)
+	{
+		for(k=0;k<=3;k++)
+		{
+			Gz[i][51][k]=0.5*(3*(gz[i][52][k]-gz[i][51][k])-(gz[i][53][k]-gz[i][52][k]));
+		}
+	}
+	//分区计算全场的G+
+	for(j=52;j<=252;j++)//这里很显然是只计算实体网格的，这里分成了五个区域，也是没办法，因为有了两个凹坑以后，我就分成了五个区域
+	{
+		for(i=2;i<=102;i++)
+		{
+				for(k=0;k<=3;k++)
+				{
+					Gz[i][j][k]=-0.5*Gz[i][j-1][k]+5.0/4.0*(gz[i][j][k]-gz[i][j-1][k])+0.25*(gz[i][j+1][k]-gz[i][j][k]);
+				}
+		}
+	}
+	for(j=2;j<=252;j++)
+	{
+		for(i=103;i<=201;i++)
+		{
+				for(k=0;k<=3;k++)
+				{
+					Gz[i][j][k]=-0.5*Gz[i][j-1][k]+5.0/4.0*(gz[i][j][k]-gz[i][j-1][k])+0.25*(gz[i][j+1][k]-gz[i][j][k]);
+				}
+		}
+	}
+	for(j=52;j<=252;j++)
+	{
+		for(i=202;i<=302;i++)
+		{
+				for(k=0;k<=3;k++)
+				{
+					Gz[i][j][k]=-0.5*Gz[i][j-1][k]+5.0/4.0*(gz[i][j][k]-gz[i][j-1][k])+0.25*(gz[i][j+1][k]-gz[i][j][k]);
+				}
+		}
+	}
+	for(j=2;j<=252;j++)
+	{
+		for(i=303;i<=401;i++)
+		{
+			    for(k=0;k<=3;k++)
+				{
+					Gz[i][j][k]=-0.5*Gz[i][j-1][k]+5.0/4.0*(gz[i][j][k]-gz[i][j-1][k])+0.25*(gz[i][j+1][k]-gz[i][j][k]);
+				}
+		}
+	}
+	for(j=52;j<=252;j++)
+	{
+		for(i=402;i<=602;i++)
+		{
+			    for(k=0;k<=3;k++)
+				{
+					Gz[i][j][k]=-0.5*Gz[i][j-1][k]+5.0/4.0*(gz[i][j][k]-gz[i][j-1][k])+0.25*(gz[i][j+1][k]-gz[i][j][k]);
+				}
+		}
+	}
+	//整区计算G-的上值，这里就只有一条很长的边了，这里也是第二层虚拟网格
+   for(i=2;i<=602;i++)
+	{
+		for(k=0;k<=3;k++)
+		{
+			Gf[i][253][k]=0.5*(3*(gf[i][253][k]-gf[i][252][k])-(gf[i][252][k]-gf[i][251][k]));
+		}
+	}
+	//分区计算全场的G-的值，还是五个区域
+	for(j=252;j>=52;j--)
+	{
+		for(i=2;i<=102;i++)
+		{
+			if(U[i][j][0]!=0)
+			{
+				for(k=0;k<=3;k++)
+				{
+					Gf[i][j][k]=-0.5*Gf[i][j+1][k]+5.0/4.0*(gf[i][j+1][k]-gf[i][j][k])+0.25*(gf[i][j][k]-gf[i][j-1][k]);
+				}
+			}
+		}
+	}
+	for(j=252;j>=2;j--)
+	{
+		for(i=103;i<=201;i++)
+		{
+			if(U[i][j][0]!=0)
+			{
+				for(k=0;k<=3;k++)
+				{
+					Gf[i][j][k]=-0.5*Gf[i][j+1][k]+5.0/4.0*(gf[i][j+1][k]-gf[i][j][k])+0.25*(gf[i][j][k]-gf[i][j-1][k]);
+				}
+			}
+		}
+	}
+	for(j=252;j>=52;j--)
+	{
+		for(i=202;i<=302;i++)
+		{
+			if(U[i][j][0]!=0)
+			{
+				for(k=0;k<=3;k++)
+				{
+					Gf[i][j][k]=-0.5*Gf[i][j+1][k]+5.0/4.0*(gf[i][j+1][k]-gf[i][j][k])+0.25*(gf[i][j][k]-gf[i][j-1][k]);
+				}
+			}
+		}
+	}
+	for(j=252;j>=2;j--)
+	{
+		for(i=303;i<=401;i++)
+		{
+			if(U[i][j][0]!=0)
+			{
+				for(k=0;k<=3;k++)
+				{
+					Gf[i][j][k]=-0.5*Gf[i][j+1][k]+5.0/4.0*(gf[i][j+1][k]-gf[i][j][k])+0.25*(gf[i][j][k]-gf[i][j-1][k]);
+				}
+			}
+		}
+	}
+	for(j=252;j>=52;j--)
+	{
+		for(i=402;i<=602;i++)
+		{
+			if(U[i][j][0]!=0)
+			{
+				for(k=0;k<=3;k++)
+				{
+					Gf[i][j][k]=-0.5*Gf[i][j+1][k]+5.0/4.0*(gf[i][j+1][k]-gf[i][j][k])+0.25*(gf[i][j][k]-gf[i][j-1][k]);
+				}
+			}
+		}
+	}
+}
+
+void RK_y(double U[Jx+5][Jy+5][4],double Un[Jx+5][Jy+5][4],double U1[Jx+5][Jy+5][4],double U2[Jx+5][Jy+5][4],double Gz[Jx+5][Jy+5][4],double Gf[Jx+5][Jy+5][4],double gz[Jx+5][Jy+5][4],double gf[Jx+5][Jy+5][4],double dx,double dy,double dt,double p[Jx+5][Jy+5])
+{
+	int i,j,k;//龙格库塔计算y
+	dt=CFL(U,dx,dy);
+	double r=dt/dy;
+	//分区计算U，这里都是实网格
+	for(i=2;i<=Jx+2;i++)
+	{
+		for(j=52;j<=252;j++)
+		{
+			if(U[i][j][0]!=0)
+			{
+				for(k=0;k<=3;k++)
+				{
+					U1[i][j][k]=U[i][j][k]-r*(Gz[i][j][k]+Gf[i][j][k]);
+				}
+			}
+		}
+	}
+	for(i=103;i<=201;i++)
+	{
+		for(j=2;j<=51;j++)
+		{
+			if(U[i][j][0]!=0)
+			{
+				for(k=0;k<=3;k++)
+				{
+					U1[i][j][k]=U[i][j][k]-r*(Gz[i][j][k]+Gf[i][j][k]);
+				}
+			}
+		}
+	}
+	for(i=303;i<=401;i++)
+	{
+		for(j=2;j<=51;j++)
+		{
+			if(U[i][j][0]!=0)
+			{
+				for(k=0;k<=3;k++)
+				{
+					U1[i][j][k]=U[i][j][k]-r*(Gz[i][j][k]+Gf[i][j][k]);
+				}
+			}
+		}
+	}
+	bound(U1,dx,dy);
+	dt=CFL(U1,dx,dy);
+	r=dt/dy;
+	Compact_y(U1,Un,Gz,Gf,gz,gf,dx,dy,dt,p);//这里不多说明了，还是每算一次都要重新计算
+	for(i=2;i<=Jx+2;i++)
+	{
+		for(j=52;j<=252;j++)
+		{
+			if(U[i][j][0]!=0)
+			{
+				for(k=0;k<=3;k++)
+				{
+					U2[i][j][k]=0.75*U[i][j][k]+0.25*U1[i][j][k]-r*(Gz[i][j][k]+Gf[i][j][k]);
+				}
+			}
+		}
+	}
+	for(i=103;i<=201;i++)
+	{
+		for(j=2;j<=51;j++)
+		{
+			if(U[i][j][0]!=0)
+			{
+				for(k=0;k<=3;k++)
+				{
+					U2[i][j][k]=0.75*U[i][j][k]+0.25*U1[i][j][k]-r*(Gz[i][j][k]+Gf[i][j][k]);
+				}
+			}
+		}
+	}
+    for(i=303;i<=401;i++)
+	{
+		for(j=2;j<=51;j++)
+		{
+			if(U[i][j][0]!=0)
+			{
+				for(k=0;k<=3;k++)
+				{
+					U2[i][j][k]=0.75*U[i][j][k]+0.25*U1[i][j][k]-r*(Gz[i][j][k]+Gf[i][j][k]);
+				}
+			}
+		}
+	}
+	bound(U2,dx,dy);
+	dt=CFL(U2,dx,dy);
+	r=dt/dy;
+	Compact_y(U2,Un,Gz,Gf,gz,gf,dx,dy,dt,p);
+	for(i=2;i<=Jx+2;i++)
+	{
+		for(j=52;j<=252;j++)
+		{
+			if(U[i][j][0]!=0)
+			{
+				for(k=0;k<=3;k++)
+				{
+					U[i][j][k]=1.0/3.0*U[i][j][k]+2.0/3.0*U2[i][j][k]-2.0/3.0*r*(Gz[i][j][k]+Gf[i][j][k]);
+				}
+			}
+		}
+	}
+	for(i=103;i<=201;i++)
+	{
+		for(j=2;j<=51;j++)
+		{
+			if(U[i][j][0]!=0)
+			{
+				for(k=0;k<=3;k++)
+				{
+					U[i][j][k]=1.0/3.0*U[i][j][k]+2.0/3.0*U2[i][j][k]-2.0/3.0*r*(Gz[i][j][k]+Gf[i][j][k]);
+				}
+			}
+		}
+	}
+	for(i=303;i<=401;i++)
+	{
+		for(j=2;j<=51;j++)
+		{
+			if(U[i][j][0]!=0)
+			{
+				for(k=0;k<=3;k++)
+				{
+					U[i][j][k]=1.0/3.0*U[i][j][k]+2.0/3.0*U2[i][j][k]-2.0/3.0*r*(Gz[i][j][k]+Gf[i][j][k]);
+				}
+			}
+		}
+	}
+}
+
+void Compact_Solver(double U[Jx+5][Jy+5][4],double Un[Jx+5][Jy+5][4],double U1[Jx+5][Jy+5][4],double U2[Jx+5][Jy+5][4],double Fz[Jx+5][Jy+5][4],double Ff[Jx+5][Jy+5][4],double fz[Jx+5][Jy+5][4],double ff[Jx+5][Jy+5][4],double Gz[Jx+5][Jy+5][4],double Gf[Jx+5][Jy+5][4],double gz[Jx+5][Jy+5][4],double gf[Jx+5][Jy+5][4],
+					double dx,double dy,double dt,double p[Jx+5][Jy+5])
+{
+	bound(U,dx,dy);
+	Compact_x(U,Un,Fz,Ff,fz,ff,dx,dy,dt,p);
+	RK_x(U,Un,U1,U2,Fz,Ff,fz,ff,dx,dy,dt,p);
+	bound(U,dx,dy);
+	Compact_y(U,Un,Gz,Gf,gz,gf,dx,dy,dt,p);
+	RK_y(U,Un,U1,U2,Gz,Gf,gz,gf,dx,dy,dt,p);
+	bound(U,dx,dy);
+	Compact_y(U,Un,Gz,Gf,gz,gf,dx,dy,dt,p);
+	RK_y(U,Un,U1,U2,Gz,Gf,gz,gf,dx,dy,dt,p);
+	bound(U,dx,dy);
+	Compact_x(U,Un,Fz,Ff,fz,ff,dx,dy,dt,p);
+	RK_x(U,Un,U1,U2,Fz,Ff,fz,ff,dx,dy,dt,p);//这里这么算是参考了课本171页，为了避免计算顺序的选择而带入人工因素
+}
+
+void Output(double U[Jx+5][Jy+5][4],double dx,double dy,double T)
+{
+ int i,j;
+ FILE *fz;
+ double rou,u,v,p;
+
+ char filename[30];
+
+ sprintf(filename,"%1.4f.plt",T); 
+ fz=fopen(filename,"w");
+
+ //fz=fopen("result.plt","w");
+
+ fprintf(fz,"TITLE     = \"Dataset\"\nVARIABLES = \"x\" \"y\" \"rou\" \"u\" \"v\" \"p\" \"E\"");
+ fprintf(fz,"ZONE T=\"Zone 1\"\nI=%d J=%d K=%d ZONETYPE=Ordered\n",Jy+1,Jx+1,1);
+ fprintf(fz,"DATAPACKING=POINT\n");//这一段参考了老师的程序，来自于那个二维斜激波
+  
+ 
+	for(j=0;j<=49;j++)          //除了实体网格和虚拟网格都为0，要不然会输出乱码，因为这些地方的值应该是很小的  
+	{
+		for(i=0;i<=100;i++)
+		{
+			U[i][j][0]=0;
+			U[i][j][1]=0;
+			U[i][j][2]=0;
+			U[i][j][3]=0;	
+		}
+		for(i=204;i<=300;i++)
+		{
+			U[i][j][0]=0;
+			U[i][j][1]=0;
+			U[i][j][2]=0;
+			U[i][j][3]=0;	
+		}
+		for(i=404;i<=604;i++)
+		{
+			U[i][j][0]=0;
+			U[i][j][1]=0;
+			U[i][j][2]=0;
+			U[i][j][3]=0;	
+		}
+	}
+
+
+ for(i=2;i<=Jx+2;i++)//这样子的区域包括实体网格和凹坑
+ {
+	 for(j=2;j<=Jy+2;j++)
+	 {
+		 if(U[i][j][0]!=0)//密度不为0的区域就是实体网格了
+		 {
+              rou=U[i][j][0];
+              u=U[i][j][1]/rou;
+              v=U[i][j][2]/rou;
+              p=(GAMA-1)*(U[i][j][3]-0.5*U[i][j][0]*(u*u+v*v));
+			  fprintf(fz,"%20f%20f%20.10e%20.10e%20.10e%20.10e%20.10e\n",(i-2)*dx,(j-2)*dy,rou,u,v,p,U[i][j][3]); 
+          }
+		 else
+		 {    rou=0;
+              u=0;
+              v=0;
+              p=0;
+			  fprintf(fz,"%20f%20f%20.10e%20.10e%20.10e%20.10e%20.10e\n",(i-2)*dx,(j-2)*dy,rou,u,v,p,U[i][j][3]); //凹坑旁边的块儿，那肯定是当做0输出
+
+		 }
+	 }
+ }
+ fclose(fz); 
+
+
+ /*fz=fopen("big_result.txt","w");//能够看到，我这里改成注释了，意思是，txt文件我最终没有输出，因为后来觉得不是很有必要
+ 
+
+
+	for(j=0;j<=49;j++)          //除了实体网格和虚拟网格都为0，要不然会输出乱码，因为这些地方的值应该是很小的   
+	{
+		for(i=0;i<=100;i++)
+		{
+			U[i][j][0]=0;
+			U[i][j][1]=0;
+			U[i][j][2]=0;
+			U[i][j][3]=0;	
+		}
+		for(i=204;i<=300;i++)
+		{
+			U[i][j][0]=0;
+			U[i][j][1]=0;
+			U[i][j][2]=0;
+			U[i][j][3]=0;	
+		}
+		for(i=404;i<=604;i++)
+		{
+			U[i][j][0]=0;
+			U[i][j][1]=0;
+			U[i][j][2]=0;
+			U[i][j][3]=0;	
+		}
+	}
+
+
+ for(i=2;i<=Jx+2;i++)
+ {
+	 for(j=2;j<=Jy+2;j++)
+	 {
+		 if(U[i][j][0]!=0)
+			{
+               rou=U[i][j][0];
+               u=U[i][j][1]/rou;
+               v=U[i][j][2]/rou;
+               p=(GAMA-1)*(U[i][j][3]-0.5*U[i][j][0]*(u*u+v*v));
+			   fzrintf(fz,"%20f%20f%20.10e%20.10e%20.10e%20.10e%20.10e\n",i*dx,j*dy,rou,u,v,p,U[i][j][3]); 
+            }
+	 }
+ }
+ fclose(fz);   */
+}
+
+int main()
+{
+    int m=1;
+	double dx,dy,dt,T;	
+	Initial(U,dx,dy);
+	T=0;
+	while(T<=TT)
+	{
+		dt=CFL(U,dx,dy);
+		printf("T=%10g    dt=%10g\n",T,dt);
+		Compact_Solver(U,Un,U1,U2,Fz,Ff,fz,ff,Gz,Gf,gz,gf,dx,dy,dt,p);
+		T+=2*dt;//因为之前算子分裂的时候算了两遍，所以这里自然就是2倍的dt
+
+		if(m*0.02<=T&&m*0.02>T-2*dt)
+		{
+          Output(U,dx,dy,T);
+          m++;
+		}
+	}
+	Output(U,dx,dy,T);
+}
+
