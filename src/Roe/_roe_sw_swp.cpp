@@ -18,7 +18,8 @@
 timeval ts, te;
 #define get_elapsed_time_ms(_s, _e) (1000.0 * (_e.tv_sec - _s.tv_sec) + (_e.tv_usec - _s.tv_usec) / 1000.0)
 
-#define ENO_FUSION
+//#define ENO_FUSION
+#define MUSCL_FUSION
 
 using namespace std;
 
@@ -866,6 +867,8 @@ void MUSCL_x(double U[Nx+7][Ny+7][4],double U_L[Nx+7][Ny+7][4],double U_R[Nx+7][
 {
 	int i,j,k;
 	double r=dt/dx;
+
+#ifndef MUSCL_FUSION
 	//计算U_L和U_R
 	for(i=2;i<=Nx+3;i++)
 		for(j=2;j<=Ny+3;j++)
@@ -900,6 +903,40 @@ void MUSCL_x(double U[Nx+7][Ny+7][4],double U_L[Nx+7][Ny+7][4],double U_R[Nx+7][
 			if(U[i][j][0]!=0)
 				for(k=0;k<=3;k++)
 					U[i][j][k]=U[i][j][k]-r*(F_[i][j][k]-F_[i-1][j][k]);
+#else
+	for(i=2;i<=Nx+3;i++)
+		for(j=2;j<=Ny+3;j++)
+			if(U[i][j][0]!=0) {
+				//计算U_L和U_R
+				for(k=0;k<=3;k++)
+				{
+					U_L[i][j][k]=U[i][j][k]+0.25*(1-K)*minmod(U[i][j][k]-U[i-1][j][k],BETA*(U[i+1][j][k]-U[i][j][k]))
+						+0.25*(1+K)*minmod(U[i+1][j][k]-U[i][j][k],BETA*(U[i][j][k]-U[i-1][j][k]));
+					U_R[i][j][k]=U[i+1][j][k]-0.25*(1-K)*minmod(U[i+2][j][k]-U[i+1][j][k],BETA*(U[i+1][j][k]-U[i][j][k]))
+						-0.25*(1+K)*minmod(U[i+1][j][k]-U[i][j][k],BETA*(U[i+2][j][k]-U[i+1][j][k]));
+				}
+
+				//计算Fp和Fd
+				U2FpFd_AVG(U_L[i][j],U_R[i][j],Fp[i][j],Fd[i][j]);
+				//计算F_
+				for(k=0;k<=3;k++)
+					F_[i][j][k]=Fp[i][j][k]+Fd[i][j][k];
+			}
+
+	//计算U
+	for(i=3;i<=Nx+3;i++)
+		for(j=3;j<=int(0.5/dy)+3;j++)
+			if(U[i][j][0]!=0)
+				for(k=0;k<=3;k++)
+					U[i][j][k]=U[i][j][k]-r*(F_[i][j][k]-F_[i-1][j][k]);
+
+	for(i=int(1.0/dx)+3;i<=int(2.0/dx)+3;i++)       
+		for(j=int(0.5/dy)+4;j<=Ny+3;j++)
+			if(U[i][j][0]!=0)
+				for(k=0;k<=3;k++)
+					U[i][j][k]=U[i][j][k]-r*(F_[i][j][k]-F_[i-1][j][k]);
+
+#endif
 }
 //算Gp和Gd
 void U2GpGd_AVG(double U_L[4],double U_R[4],double Gp[4],double Gd[4])
@@ -958,6 +995,7 @@ void MUSCL_y(double U[Nx+7][Ny+7][4],double U_L[Nx+7][Ny+7][4],double U_R[Nx+7][
 {
 	int i,j,k;
 	double r=dt/dy;
+#ifndef MUSCL_FUSION
 	//计算U_L和U_R
 	for(i=2;i<=Nx+3;i++)
 		for(j=2;j<=Ny+3;j++)
@@ -992,6 +1030,38 @@ void MUSCL_y(double U[Nx+7][Ny+7][4],double U_L[Nx+7][Ny+7][4],double U_R[Nx+7][
 			if(U[i][j][0]!=0)
 				for(k=0;k<=3;k++)
 					U[i][j][k]=U[i][j][k]-r*(G_[i][j][k]-G_[i][j-1][k]);
+#else
+	for(i=2;i<=Nx+3;i++)
+		for(j=2;j<=Ny+3;j++)
+			if(U[i][j][0]!=0) {
+				//计算U_L和U_R
+				for(k=0;k<=3;k++)
+				{
+					U_L[i][j][k]=U[i][j][k]+0.25*(1-K)*minmod(U[i][j][k]-U[i][j-1][k],BETA*(U[i][j+1][k]-U[i][j][k]))
+						+0.25*(1+K)*minmod(U[i][j+1][k]-U[i][j][k],BETA*(U[i][j][k]-U[i][j-1][k]));
+					U_R[i][j][k]=U[i][j+1][k]-0.25*(1-K)*minmod(U[i][j+2][k]-U[i][j+1][k],BETA*(U[i][j+1][k]-U[i][j][k]))
+						-0.25*(1+K)*minmod(U[i][j+1][k]-U[i][j][k],BETA*(U[i][j+2][k]-U[i][j+1][k]));
+				}
+				//计算Gp和Gd
+				U2GpGd_AVG(U_L[i][j],U_R[i][j],Gp[i][j],Gd[i][j]);
+				//计算G_
+				for(k=0;k<=3;k++)
+					G_[i][j][k]=Gp[i][j][k]+Gd[i][j][k];
+			}
+	//计算U
+	for(i=3;i<=Nx+3;i++)
+		for(j=3;j<=int(0.5/dy)+3;j++)
+			if(U[i][j][0]!=0)
+				for(k=0;k<=3;k++)
+					U[i][j][k]=U[i][j][k]-r*(G_[i][j][k]-G_[i][j-1][k]);
+
+	for(i=int(1.0/dx)+3;i<=int(2.0/dx)+3;i++)       
+		for(j=int(0.5/dy)+4;j<=Ny+3;j++)
+			if(U[i][j][0]!=0)
+				for(k=0;k<=3;k++)
+					U[i][j][k]=U[i][j][k]-r*(G_[i][j][k]-G_[i][j-1][k]);
+
+#endif
 }
 
 void MUSCL_Solver(double U[Nx+7][Ny+7][4],double U_L[Nx+7][Ny+7][4],double U_R[Nx+7][Ny+7][4],double Fp[Nx+7][Ny+7][4],
@@ -2987,6 +3057,7 @@ int main(int argc, char** argv)
 	}
 	if(method==2)
 	{
+		gettimeofday(&ts, NULL);
 		while(T<=TT)
 		{
 			dt=CFL(U,dx,dy,MUSCLCFL);
@@ -2995,6 +3066,9 @@ int main(int argc, char** argv)
 			n++;              
 			m+=Animation(U,dx,dy,n,m,method);	
 		}
+		gettimeofday(&te, NULL);
+		double ms = get_elapsed_time_ms(ts, te);
+		cout << "2 method ms: " << ms << endl;
 	}
 	if(method==3)
 	{
