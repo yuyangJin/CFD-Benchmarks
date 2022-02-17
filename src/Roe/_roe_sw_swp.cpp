@@ -18,6 +18,8 @@
 timeval ts, te;
 #define get_elapsed_time_ms(_s, _e) (1000.0 * (_e.tv_sec - _s.tv_sec) + (_e.tv_usec - _s.tv_usec) / 1000.0)
 
+#define ENO_FUSION
+
 using namespace std;
 
 #define GAMA 1.4
@@ -1682,6 +1684,7 @@ void LF_x(double U[Nx+7][Ny+7][4],double LAMDA_[Nx+7][Ny+7][4][4],double F[Nx+7]
 {
 	int i,j,k;
 	double rou,u,v,p,a,maxlamda=pow(10,-100);
+#ifndef ENO_FUSION
 	for(i=0;i<=Nx+6;i++)        //对LAMDA_赋值
 		for(j=0;j<=Ny+6;j++)
 			if(U[i][j][0]!=0)
@@ -1690,7 +1693,8 @@ void LF_x(double U[Nx+7][Ny+7][4],double LAMDA_[Nx+7][Ny+7][4][4],double F[Nx+7]
 				u=U[i][j][1]/U[i][j][0];
 				v=U[i][j][2]/U[i][j][0];
 				p=(GAMA-1)*(U[i][j][3]-0.5*rou*(u*u+v*v));
-				a=pow(p*GAMA/rou,0.5);
+				//a=pow(p*GAMA/rou,0.5);
+				a=sqrt(p*GAMA/rou);
 				LAMDA_[i][j][0][0]=u-a;
 				LAMDA_[i][j][1][1]=u;
 				LAMDA_[i][j][2][2]=u+a;
@@ -1716,6 +1720,43 @@ void LF_x(double U[Nx+7][Ny+7][4],double LAMDA_[Nx+7][Ny+7][4][4],double F[Nx+7]
 					Fd[i][j][k]=0.5*(F[i][j][k]-maxlamda*U[i][j][k]);
 				}
 
+#else
+	for(i=0;i<=Nx+6;i++)  
+		for(j=0;j<=Ny+6;j++)
+			if(U[i][j][0]!=0)
+			{
+				//对LAMDA_赋值
+				rou=U[i][j][0];
+				u=U[i][j][1]/U[i][j][0];
+				v=U[i][j][2]/U[i][j][0];
+				p=(GAMA-1)*(U[i][j][3]-0.5*rou*(u*u+v*v));
+				//a=pow(p*GAMA/rou,0.5);
+				a=sqrt(p*GAMA/rou);
+				LAMDA_[i][j][0][0]=u-a;
+				LAMDA_[i][j][1][1]=u;
+				LAMDA_[i][j][2][2]=u+a;
+				LAMDA_[i][j][3][3]=u;
+				for(k=0;k<=3;k++)
+				{					
+					if(fabs(LAMDA_[i][j][k][k])>=maxlamda)maxlamda=fabs(LAMDA_[i][j][k][k]);
+				}
+			}
+
+	for(i=0;i<=Nx+6;i++)  
+		for(j=0;j<=Ny+6;j++)
+			if(U[i][j][0]!=0)
+			{
+				//U2F
+				U2F(U[i][j],F[i][j]);
+
+				//计算Fpd
+				for(k=0;k<=3;k++)
+				{
+					Fp[i][j][k]=0.5*(F[i][j][k]+maxlamda*U[i][j][k]);
+					Fd[i][j][k]=0.5*(F[i][j][k]-maxlamda*U[i][j][k]);
+				}
+			}
+#endif
 }
 void ENO_x(double U[Nx+7][Ny+7][4],double F[Nx+7][Ny+7][4],double Fp[Nx+7][Ny+7][4],double Fd[Nx+7][Ny+7][4],
 		   double F_p[Nx+7][Ny+7][4],double F_d[Nx+7][Ny+7][4],double F_[Nx+7][Ny+7][4],
@@ -1725,6 +1766,8 @@ void ENO_x(double U[Nx+7][Ny+7][4],double F[Nx+7][Ny+7][4],double Fp[Nx+7][Ny+7]
 	double r;
 	dt=CFL(U,dx,dy,ENOCFL);
 	r=dt/dx;
+
+#ifndef ENO_FUSION
 	//计算q3pd q5pd
 	for(i=2;i<=Nx+3;i++)    
 		for(j=2;j<=Ny+3;j++)
@@ -1792,6 +1835,59 @@ void ENO_x(double U[Nx+7][Ny+7][4],double F[Nx+7][Ny+7][4],double Fp[Nx+7][Ny+7]
 			for(k=0;k<=3;k++)
 				U[i][j][k]=U[i][j][k]-r*(F_[i][j][k]-F_[i-1][j][k]);
 	
+#else
+	for(i=2;i<=Nx+3;i++)    
+		for(j=2;j<=Ny+3;j++)
+			if(U[i][j][0]!=0)
+				for(k=0;k<=3;k++)
+				{
+					//计算q3pd q5pd
+					q3p[i][j][k][0]=1.0/3.0*Fp[i-2][j][k]-7.0/6.0*Fp[i-1][j][k]+11.0/6.0*Fp[i][j][k];
+					q3p[i][j][k][1]=-1.0/6.0*Fp[i-1][j][k]+5.0/6.0*Fp[i][j][k]+1.0/3.0*Fp[i+1][j][k];
+					q3p[i][j][k][2]=1.0/3.0*Fp[i][j][k]+5.0/6.0*Fp[i+1][j][k]-1.0/6.0*Fp[i+2][j][k];
+
+					q3d[i][j][k][0]=-1.0/6.0*Fd[i-1][j][k]+5.0/6.0*Fd[i][j][k]+1.0/3.0*Fd[i+1][j][k];
+					q3d[i][j][k][1]=1.0/3.0*Fd[i][j][k]+5.0/6.0*Fd[i+1][j][k]-1.0/6.0*Fd[i+2][j][k];
+					q3d[i][j][k][2]=11.0/6.0*Fd[i+1][j][k]-7.0/6.0*Fd[i+2][j][k]+1.0/3.0*Fd[i+3][j][k];
+
+					//判断差商大小并且赋值
+					if(fabs(U[i+1][j][k]-U[i][j][k])>fabs(U[i][j][k]-U[i-1][j][k])&&fabs(U[i+1][j][k]-U[i][j][k])>fabs(U[i-1][j][k]-U[i-2][j][k]))
+						F_p[i][j][k]=q3p[i][j][k][0];
+					else 
+					{
+						if(fabs(U[i][j][k]-U[i-1][j][k])>fabs(U[i+1][j][k]-U[i][j][k])&&fabs(U[i][j][k]-U[i-1][j][k])>fabs(U[i+2][j][k]-U[i+1][j][k]))
+							F_p[i][j][k]=q3p[i][j][k][2];
+						else
+							F_p[i][j][k]=q3p[i][j][k][1];
+					}
+
+					if(fabs(U[i+2][j][k]-U[i+1][j][k])>fabs(U[i+1][j][k]-U[i][j][k])&&fabs(U[i+2][j][k]-U[i+1][j][k])>fabs(U[i][j][k]-U[i-1][j][k]))
+						F_d[i][j][k]=q3d[i][j][k][0];
+					else
+					{
+						if(fabs(U[i+1][j][k]-U[i][j][k])>fabs(U[i+2][j][k]-U[i+1][j][k])&&fabs(U[i+1][j][k]-U[i][j][k])>fabs(U[i+3][j][k]-U[i+2][j][k]))
+							F_d[i][j][k]=q3d[i][j][k][2];
+						else
+							F_d[i][j][k]=q3d[i][j][k][1];
+					}
+
+					//计算F_
+					F_[i][j][k]=F_p[i][j][k]+F_d[i][j][k];
+				}
+
+	//分区计算U
+	for(i=3;i<=Nx+3;i++)    
+		for(j=3;j<=int(0.5/dy)+3;j++)	
+			for(k=0;k<=3;k++)
+				U[i][j][k]=U[i][j][k]-r*(F_[i][j][k]-F_[i-1][j][k]);
+
+	for(i=int(1.0/dx)+3;i<=int(2.0/dx)+3;i++)    
+		for(j=int(0.5/dy)+4;j<=Ny+3;j++)
+			for(k=0;k<=3;k++)
+				U[i][j][k]=U[i][j][k]-r*(F_[i][j][k]-F_[i-1][j][k]);
+	
+#endif
+
 }
 
 ///////////-------------------------------y
@@ -1800,6 +1896,8 @@ void LF_y(double U[Nx+7][Ny+7][4],double LAMDA_[Nx+7][Ny+7][4][4],double G[Nx+7]
 {
 	int i,j,k;
 	double rou,u,v,a,p,maxlamda=pow(10,-100);
+
+#ifndef ENO_FUSION
 	for(i=0;i<=Nx+5;i++)        //对LAMDA_赋值
 		for(j=0;j<=Ny+5;j++)
 			if(U[i][j][0]!=0)
@@ -1808,7 +1906,8 @@ void LF_y(double U[Nx+7][Ny+7][4],double LAMDA_[Nx+7][Ny+7][4][4],double G[Nx+7]
 				u=U[i][j][1]/U[i][j][0];
 				v=U[i][j][2]/U[i][j][0];
 				p=(GAMA-1)*(U[i][j][3]-0.5*rou*(u*u+v*v));
-				a=pow(p*GAMA/rou,0.5);
+				//a=pow(p*GAMA/rou,0.5);
+				a=sqrt(p*GAMA/rou);
 				LAMDA_[i][j][0][0]=v-a;
 				LAMDA_[i][j][1][1]=v;
 				LAMDA_[i][j][2][2]=v+a;
@@ -1834,7 +1933,42 @@ void LF_y(double U[Nx+7][Ny+7][4],double LAMDA_[Nx+7][Ny+7][4][4],double G[Nx+7]
 					Gp[i][j][k]=0.5*(G[i][j][k]+maxlamda*U[i][j][k]);
 					Gd[i][j][k]=0.5*(G[i][j][k]-maxlamda*U[i][j][k]);
 				}
+#else
+	for(i=0;i<=Nx+5;i++)        //对LAMDA_赋值
+		for(j=0;j<=Ny+5;j++)
+			if(U[i][j][0]!=0)
+			{
+				rou=U[i][j][0];
+				u=U[i][j][1]/U[i][j][0];
+				v=U[i][j][2]/U[i][j][0];
+				p=(GAMA-1)*(U[i][j][3]-0.5*rou*(u*u+v*v));
+				//a=pow(p*GAMA/rou,0.5);
+				a=sqrt(p*GAMA/rou);
+				LAMDA_[i][j][0][0]=v-a;
+				LAMDA_[i][j][1][1]=v;
+				LAMDA_[i][j][2][2]=v+a;
+				LAMDA_[i][j][3][3]=v;
+				for(k=0;k<=3;k++)
+				{					
+					if(fabs(LAMDA_[i][j][k][k])>=maxlamda)maxlamda=fabs(LAMDA_[i][j][k][k]);
+				}
+			}
 
+		//U2G
+	for(i=0;i<=Nx+6;i++)      
+		for(j=0;j<=Ny+6;j++)
+			if(U[i][j][0]!=0) {
+				U2G(U[i][j],G[i][j]);
+
+	//计算Gpd
+				for(k=0;k<=3;k++)
+				{
+					Gp[i][j][k]=0.5*(G[i][j][k]+maxlamda*U[i][j][k]);
+					Gd[i][j][k]=0.5*(G[i][j][k]-maxlamda*U[i][j][k]);
+				}
+			}
+
+#endif
 }
 void ENO_y(double U[Nx+7][Ny+7][4],double G[Nx+7][Ny+7][4],double Gp[Nx+7][Ny+7][4],double Gd[Nx+7][Ny+7][4],
 		   double G_p[Nx+7][Ny+7][4],double G_d[Nx+7][Ny+7][4],double G_[Nx+7][Ny+7][4],
@@ -1844,6 +1978,8 @@ void ENO_y(double U[Nx+7][Ny+7][4],double G[Nx+7][Ny+7][4],double Gp[Nx+7][Ny+7]
 	double r;
 	dt=CFL(U,dx,dy,ENOCFL);
 	r=dt/dy;
+
+#ifndef ENO_FUSION
 	//计算q3pd q5pd
 	for(i=2;i<=Nx+3;i++)    
 		for(j=2;j<=Ny+3;j++)
@@ -1914,7 +2050,64 @@ void ENO_y(double U[Nx+7][Ny+7][4],double G[Nx+7][Ny+7][4],double Gp[Nx+7][Ny+7]
 		for(j=int(0.5/dy)+4;j<=Ny+3;j++)
 			for(k=0;k<=3;k++)
 				U[i][j][k]=U[i][j][k]-r*(G_[i][j][k]-G_[i][j-1][k]);
-	
+#else	
+	//计算q3pd q5pd
+	for(i=2;i<=Nx+3;i++)    
+		for(j=2;j<=Ny+3;j++)
+			if(U[i][j][0]!=0)
+			{
+				for(k=0;k<=3;k++)
+				{
+					q3p[i][j][k][0]=1.0/3.0*Gp[i][j-2][k]-7.0/6.0*Gp[i][j-1][k]+11.0/6.0*Gp[i][j][k];
+					q3p[i][j][k][1]=-1.0/6.0*Gp[i][j-1][k]+5.0/6.0*Gp[i][j][k]+1.0/3.0*Gp[i][j+1][k];
+					q3p[i][j][k][2]=1.0/3.0*Gp[i][j][k]+5.0/6.0*Gp[i][j+1][k]-1.0/6.0*Gp[i][j+2][k];
+
+					q3d[i][j][k][0]=-1.0/6.0*Gd[i][j-1][k]+5.0/6.0*Gd[i][j][k]+1.0/3.0*Gd[i][j+1][k];
+					q3d[i][j][k][1]=1.0/3.0*Gd[i][j][k]+5.0/6.0*Gd[i][j+1][k]-1.0/6.0*Gd[i][j+2][k];
+					q3d[i][j][k][2]=11.0/6.0*Gd[i][j+1][k]-7.0/6.0*Gd[i][j+2][k]+1.0/3.0*Gd[i][j+3][k];
+			
+	//判断差商大小并且赋值
+					if(fabs(U[i][j+1][k]-U[i][j][k])>fabs(U[i][j][k]-U[i][j-1][k])&&fabs(U[i][j+1][k]-U[i][j][k])>fabs(U[i][j-1][k]-U[i][j-2][k]))
+						G_p[i][j][k]=q3p[i][j][k][0];
+					else 
+					{
+						if(fabs(U[i][j][k]-U[i][j-1][k])>fabs(U[i][j+1][k]-U[i][j][k])&&fabs(U[i][j][k]-U[i][j-1][k])>fabs(U[i][j+2][k]-U[i][j+1][k]))
+							G_p[i][j][k]=q3p[i][j][k][2];
+						else
+							G_p[i][j][k]=q3p[i][j][k][1];
+					}
+
+					if(fabs(U[i][j+2][k]-U[i][j+1][k])>fabs(U[i][j+1][k]-U[i][j][k])&&fabs(U[i][j+2][k]-U[i][j+1][k])>fabs(U[i][j][k]-U[i][j-1][k]))
+						G_d[i][j][k]=q3d[i][j][k][0];
+					else
+					{
+						if(fabs(U[i][j+1][k]-U[i][j][k])>fabs(U[i][j+2][k]-U[i][j+1][k])&&fabs(U[i][j+1][k]-U[i][j][k])>fabs(U[i][j+3][k]-U[i][j+2][k]))
+							G_d[i][j][k]=q3d[i][j][k][2];
+						else
+							G_d[i][j][k]=q3d[i][j][k][1];
+					}
+
+
+	//计算G_
+					G_[i][j][k]=G_p[i][j][k]+G_d[i][j][k];
+				}
+
+
+			}
+
+
+	//分区计算U
+	for(i=3;i<=Nx+3;i++)    
+		for(j=3;j<=int(0.5/dy)+3;j++)	
+			for(k=0;k<=3;k++)
+				U[i][j][k]=U[i][j][k]-r*(G_[i][j][k]-G_[i][j-1][k]);
+
+	for(i=int(1.0/dx)+3;i<=int(2.0/dx)+3;i++)    
+		for(j=int(0.5/dy)+4;j<=Ny+3;j++)
+			for(k=0;k<=3;k++)
+				U[i][j][k]=U[i][j][k]-r*(G_[i][j][k]-G_[i][j-1][k]);
+
+#endif
 }
 
 void ENO_Solver(double U[Nx+7][Ny+7][4],double U1[Nx+7][Ny+7][4],double U2[Nx+7][Ny+7][4],
@@ -2838,18 +3031,18 @@ int main(int argc, char** argv)
 	}
 	if(method==6)
 	{
+		gettimeofday(&ts, NULL);
 		while(T<=TT)
 		{
 			dt=CFL(U,dx,dy,ENOCFL);
-			gettimeofday(&ts, NULL);
 			ENO_Solver(U,U1,U2,F,Fp,Fd,F_p,F_d,F_,G,Gp,Gd,F_p,F_d,F_,LAMDA_,q3p,q3d,dx,dy,dt);
-			gettimeofday(&te, NULL);
-			double ms = get_elapsed_time_ms(ts, te);
-			cout << "ms: " << ms << "  dt: " << dt << "  T: " << T << endl;
 			T+=dt;
 			n++;              
 			m+=Animation(U,dx,dy,n,m,method);	
 		}
+		gettimeofday(&te, NULL);
+		double ms = get_elapsed_time_ms(ts, te);
+		cout << "6 method ms: " << ms << endl;
 	}
 	if(method==7)
 	{
