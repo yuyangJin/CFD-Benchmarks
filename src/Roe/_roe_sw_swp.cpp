@@ -13,6 +13,10 @@
 #include <cmath>
 #include <iomanip> 
 #include <string>
+#include <sys/time.h>
+
+timeval ts, te;
+#define get_elapsed_time_ms(_s, _e) (1000.0 * (_e.tv_sec - _s.tv_sec) + (_e.tv_usec - _s.tv_usec) / 1000.0)
 
 using namespace std;
 
@@ -22,7 +26,7 @@ using namespace std;
 #define MAX(x,y)(((x)>(y))?(x):(y))
 #define Lx 4.0                  //x方向的无量纲长度
 #define Ly 1.0                
-#define TT 10                  //总时间
+#define TT 0.1                  //总时间
 #define Nx 400		          //x方向的分的控制单元数	
 #define Ny 100            //x方向的分的控制单元数
 //各个方法的CFL数
@@ -79,6 +83,32 @@ double fp[Nx+7][Ny+7][4],fd[Nx+7][Ny+7][4];    //紧致格式中用小写的f表
 double gp[Nx+7][Ny+7][4],gd[Nx+7][Ny+7][4],p[Nx+7][Ny+7];  //p是压力
 
 std::string output_dir = string("_result/");
+
+void save(const char* fn) {
+	ofstream out;
+	out.open(fn, ofstream::binary);
+	out.write(reinterpret_cast<const char*>(U), sizeof(double) * (Nx + 7) * (Ny + 7) * 4);
+	out.close();
+}
+
+void compare(const char* fn) {
+	double U_dat[Nx+7][Ny+7][4];
+	ifstream in;
+	in.open(fn, ifstream::binary);
+	in.read(reinterpret_cast<char*>(U_dat), sizeof(double) * (Nx + 7) * (Ny + 7) * 4);
+	in.close();
+	for (int i = 0; i < Nx + 7; ++i) {
+		for (int j = 0; j < Ny + 7; ++j) {
+			for (int k = 0; k < 4; ++k) {
+				if (fabs(U_dat[i][j][k] - U[i][j][k]) >= 1e-6) {
+					cout << "CHECK FAILED" << endl;
+					return;
+				}
+			}
+		}
+	}
+	cout << "CHECK PASS" << endl;
+}
 
 //初始化函数
 //作用:将全场赋初值
@@ -2731,7 +2761,7 @@ int Animation(double U[Nx+7][Ny+7][4],double dx,double dy,int n,int m,int method
 	else return 0;
 }
 
-int main()
+int main(int argc, char** argv)
 {
 	int m=0,n=0,method;      //n和m分别表示调用求解器的次数和输出plt文件的个数
 	double dx,dy,dt=0,T;
@@ -2810,7 +2840,12 @@ int main()
 	{
 		while(T<=TT)
 		{
+			dt=CFL(U,dx,dy,ENOCFL);
+			gettimeofday(&ts, NULL);
 			ENO_Solver(U,U1,U2,F,Fp,Fd,F_p,F_d,F_,G,Gp,Gd,F_p,F_d,F_,LAMDA_,q3p,q3d,dx,dy,dt);
+			gettimeofday(&te, NULL);
+			double ms = get_elapsed_time_ms(ts, te);
+			cout << "ms: " << ms << "  dt: " << dt << "  T: " << T << endl;
 			T+=dt;
 			n++;              
 			m+=Animation(U,dx,dy,n,m,method);	
@@ -2820,6 +2855,7 @@ int main()
 	{
 		while(T<=TT)
 		{
+			dt=CFL(U,dx,dy,WENOCFL);
 			WENO_Solver(U,U1,U2,ISp,ISd,omegap,omegad,alphap,alphad,q3p,q3d,LAMDA_,Fp,Fd,F_p,F_d,F,F_,G,G_,Gp,Gd,G_p,G_d,dx,dy,dt);
 			T+=dt;
 			n++;              
@@ -2837,5 +2873,12 @@ int main()
 			m+=Animation(U,dx,dy,n,m,method);	
 		}
 	}
-	else cout<<"您的输入非法\n";
+
+	if (argc == 2) {
+		// compare
+		cout << "check dat: " << argv[1] << endl;
+		compare(argv[1]);
+	}
+
+	return 0;
 }
