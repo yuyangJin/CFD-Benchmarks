@@ -7,3 +7,4 @@ clang-format ${SCRIPT_DIR}/eno.cpp -i -style=file
 clang-format ${SCRIPT_DIR}/muscl.cpp -i -style=file
 clang-format ${SCRIPT_DIR}/roe.cpp -i -style=file
 clang-format ${SCRIPT_DIR}/upwindtvd.cpp -i -style=file
+clang-format ${SCRIPT_DIR}/symtvd.cpp -i -style=file
