@@ -807,7 +807,7 @@ void SymTVD_y(double U[Nx + 7][Ny + 7][4], double U_[Nx + 7][Ny + 7][4], double 
           double _t = 0;
           for (l = 0; l <= 3; l++)
             _t += -local_R_[k][l] / r * (local_g_[l] * r * r * local_LAMDA_[l] * local_LAMDA_[l] +
-                                                     local_Q_[l] * (alpha_[i][j][l] - local_g_[l]));
+                                         local_Q_[l] * (alpha_[i][j][l] - local_g_[l]));
           theta[i][j][k] = _t;
         }
       }
