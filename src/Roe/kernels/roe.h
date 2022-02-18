@@ -27,8 +27,7 @@ void RoeAVG_x(double U[Nx + 7][Ny + 7][4], double U_[Nx + 7][Ny + 7][4], double 
         U_[i][j][1] = (uL + D * uR) / (1 + D);  //注意它和U分量不同,其中U_[i]表示U[i+0.5]处roe平均的结果
         U_[i][j][2] = (vL + D * vR) / (1 + D);
         U_[i][j][3] = (D * HR + HL) / (1 + D);
-        a_[i][j][0] =
-            sqrt((GAMA - 1) * (U_[i][j][3] - 0.5 * (U_[i][j][1] * U_[i][j][1] + U_[i][j][2] * U_[i][j][2])));
+        a_[i][j][0] = sqrt((GAMA - 1) * (U_[i][j][3] - 0.5 * (U_[i][j][1] * U_[i][j][1] + U_[i][j][2] * U_[i][j][2])));
       }
 }
 void RoeAVG_y(double U[Nx + 7][Ny + 7][4], double U_[Nx + 7][Ny + 7][4],
@@ -54,8 +53,7 @@ void RoeAVG_y(double U[Nx + 7][Ny + 7][4], double U_[Nx + 7][Ny + 7][4],
         U_[i][j][1] = (uL + D * uR) / (1 + D);  //其中U[i]表示U[i+0.5]处roe平均的结果
         U_[i][j][2] = (vL + D * vR) / (1 + D);
         U_[i][j][3] = (D * HR + HL) / (1 + D);
-        a_[i][j][0] =
-            sqrt((GAMA - 1) * (U_[i][j][3] - 0.5 * (U_[i][j][1] * U_[i][j][1] + U_[i][j][2] * U_[i][j][2])));
+        a_[i][j][0] = sqrt((GAMA - 1) * (U_[i][j][3] - 0.5 * (U_[i][j][1] * U_[i][j][1] + U_[i][j][2] * U_[i][j][2])));
       }
 }
 //作用:用Roe平均以后的U值求特征值与特征向量
@@ -80,11 +78,9 @@ void Roe_Eig_x(double U[Nx + 7][Ny + 7][4], double U_[Nx + 7][Ny + 7][4], double
         for (k = 0; k <= 3; k++)  //这里对lambda做一个修正,防止声速0点出现的问题
         {
           if (LAMDA_[i][j][k][k] >= 0) {
-            LAMDA_[i][j][k][k] =
-                0.5 * (LAMDA_[i][j][k][k] + sqrt(LAMDA_[i][j][k][k] * LAMDA_[i][j][k][k] + 1e-8));
+            LAMDA_[i][j][k][k] = 0.5 * (LAMDA_[i][j][k][k] + sqrt(LAMDA_[i][j][k][k] * LAMDA_[i][j][k][k] + 1e-8));
           } else
-            LAMDA_[i][j][k][k] =
-                0.5 * (LAMDA_[i][j][k][k] - sqrt(LAMDA_[i][j][k][k] * LAMDA_[i][j][k][k] + 1e-8));
+            LAMDA_[i][j][k][k] = 0.5 * (LAMDA_[i][j][k][k] - sqrt(LAMDA_[i][j][k][k] * LAMDA_[i][j][k][k] + 1e-8));
         }
       }
   //求右特征向量
@@ -162,11 +158,9 @@ void Roe_Eig_y(double U[Nx + 7][Ny + 7][4], double U_[Nx + 7][Ny + 7][4], double
         LAMDA_[i][j][3][3] = U_[i][j][2];
         for (k = 0; k <= 3; k++) {
           if (LAMDA_[i][j][k][k] >= 0) {
-            LAMDA_[i][j][k][k] =
-                0.5 * (LAMDA_[i][j][k][k] + sqrt(LAMDA_[i][j][k][k] * LAMDA_[i][j][k][k] + 1e-8));
+            LAMDA_[i][j][k][k] = 0.5 * (LAMDA_[i][j][k][k] + sqrt(LAMDA_[i][j][k][k] * LAMDA_[i][j][k][k] + 1e-8));
           } else
-            LAMDA_[i][j][k][k] =
-                0.5 * (LAMDA_[i][j][k][k] - sqrt(LAMDA_[i][j][k][k] * LAMDA_[i][j][k][k] + 1e-8));
+            LAMDA_[i][j][k][k] = 0.5 * (LAMDA_[i][j][k][k] - sqrt(LAMDA_[i][j][k][k] * LAMDA_[i][j][k][k] + 1e-8));
         }
       }
   //求右特征向量
@@ -355,8 +349,7 @@ void RoeAVG_x(double U[Nx + 7][Ny + 7][4], double U_[Nx + 7][Ny + 7][4], double 
         U_[i][j][1] = (uL + D * uR) / (1 + D);  //注意它和U分量不同,其中U_[i]表示U[i+0.5]处roe平均的结果
         U_[i][j][2] = (vL + D * vR) / (1 + D);
         U_[i][j][3] = (D * HR + HL) / (1 + D);
-        a_[i][j][0] =
-            sqrt((GAMA - 1) * (U_[i][j][3] - 0.5 * (U_[i][j][1] * U_[i][j][1] + U_[i][j][2] * U_[i][j][2])));
+        a_[i][j][0] = sqrt((GAMA - 1) * (U_[i][j][3] - 0.5 * (U_[i][j][1] * U_[i][j][1] + U_[i][j][2] * U_[i][j][2])));
       }
 }
 void RoeAVG_y(double U[Nx + 7][Ny + 7][4], double U_[Nx + 7][Ny + 7][4],
@@ -382,8 +375,7 @@ void RoeAVG_y(double U[Nx + 7][Ny + 7][4], double U_[Nx + 7][Ny + 7][4],
         U_[i][j][1] = (uL + D * uR) / (1 + D);  //其中U[i]表示U[i+0.5]处roe平均的结果
         U_[i][j][2] = (vL + D * vR) / (1 + D);
         U_[i][j][3] = (D * HR + HL) / (1 + D);
-        a_[i][j][0] =
-            sqrt((GAMA - 1) * (U_[i][j][3] - 0.5 * (U_[i][j][1] * U_[i][j][1] + U_[i][j][2] * U_[i][j][2])));
+        a_[i][j][0] = sqrt((GAMA - 1) * (U_[i][j][3] - 0.5 * (U_[i][j][1] * U_[i][j][1] + U_[i][j][2] * U_[i][j][2])));
       }
 }
 //作用:用Roe平均以后的U值求特征值与特征向量
@@ -403,18 +395,16 @@ void Roe_Eig_x(double U[Nx + 7][Ny + 7][4], double U_[Nx + 7][Ny + 7][4], double
         for (k = 0; k <= 3; k++)  //这里对lambda做一个修正,防止声速0点出现的问题
         {
           if (LAMDA_[i][j][k][k] >= 0) {
-            LAMDA_[i][j][k][k] =
-                0.5 * (LAMDA_[i][j][k][k] + sqrt(LAMDA_[i][j][k][k] * LAMDA_[i][j][k][k] + 1e-8));
+            LAMDA_[i][j][k][k] = 0.5 * (LAMDA_[i][j][k][k] + sqrt(LAMDA_[i][j][k][k] * LAMDA_[i][j][k][k] + 1e-8));
           } else
-            LAMDA_[i][j][k][k] =
-                0.5 * (LAMDA_[i][j][k][k] - sqrt(LAMDA_[i][j][k][k] * LAMDA_[i][j][k][k] + 1e-8));
+            LAMDA_[i][j][k][k] = 0.5 * (LAMDA_[i][j][k][k] - sqrt(LAMDA_[i][j][k][k] * LAMDA_[i][j][k][k] + 1e-8));
         }
       }
   //求右特征向量
-  double u, v, a, rou, H;
   for (i = 2; i <= Nx + 3; i++)
     for (j = 2; j <= Ny + 3; j++)
       if (U[i][j][0] != 0) {
+        double u, v, a, rou, H;
         rou = U_[i][j][0];
         u = U_[i][j][1];
         v = U_[i][j][2];
@@ -438,10 +428,11 @@ void Roe_Eig_x(double U[Nx + 7][Ny + 7][4], double U_[Nx + 7][Ny + 7][4], double
         R_[i][j][3][3] = v;
       }
   //求左特征向量
-  double b1, b2;
   for (i = 2; i <= Nx + 3; i++)
     for (j = 2; j <= Ny + 3; j++)
       if (U[i][j][0] != 0) {
+        double b1, b2;
+        double u, v, a, rou, H;
         rou = U_[i][j][0];
         u = U_[i][j][1];
         v = U_[i][j][2];
@@ -480,18 +471,16 @@ void Roe_Eig_y(double U[Nx + 7][Ny + 7][4], double U_[Nx + 7][Ny + 7][4], double
         LAMDA_[i][j][3][3] = U_[i][j][2];
         for (k = 0; k <= 3; k++) {
           if (LAMDA_[i][j][k][k] >= 0) {
-            LAMDA_[i][j][k][k] =
-                0.5 * (LAMDA_[i][j][k][k] + sqrt(LAMDA_[i][j][k][k] * LAMDA_[i][j][k][k] + 1e-8));
+            LAMDA_[i][j][k][k] = 0.5 * (LAMDA_[i][j][k][k] + sqrt(LAMDA_[i][j][k][k] * LAMDA_[i][j][k][k] + 1e-8));
           } else
-            LAMDA_[i][j][k][k] =
-                0.5 * (LAMDA_[i][j][k][k] - sqrt(LAMDA_[i][j][k][k] * LAMDA_[i][j][k][k] + 1e-8));
+            LAMDA_[i][j][k][k] = 0.5 * (LAMDA_[i][j][k][k] - sqrt(LAMDA_[i][j][k][k] * LAMDA_[i][j][k][k] + 1e-8));
         }
       }
   //求右特征向量
-  double u, v, a, rou, H;
   for (i = 2; i <= Nx + 3; i++)
     for (j = 2; j <= Ny + 3; j++)
       if (U[i][j][0] != 0) {
+        double u, v, a, rou, H;
         rou = U_[i][j][0];
         u = U_[i][j][1];
         v = U_[i][j][2];
@@ -515,10 +504,11 @@ void Roe_Eig_y(double U[Nx + 7][Ny + 7][4], double U_[Nx + 7][Ny + 7][4], double
         R_[i][j][3][3] = u;
       }
   //求左特征向量
-  double b1, b2;
   for (i = 2; i <= Nx + 3; i++)
     for (j = 2; j <= Ny + 3; j++)
       if (U[i][j][0] != 0) {
+        double u, v, a, rou, H;
+        double b1, b2;
         rou = U_[i][j][0];
         u = U_[i][j][1];
         v = U_[i][j][2];
@@ -555,20 +545,77 @@ void Roe_x(double U[Nx + 7][Ny + 7][4], double U_[Nx + 7][Ny + 7][4], double L_[
   //求dt
   dt = CFL_(U_, a_, dx, dy, ROECFL);
   r = dt / dx;
-  //求特征向量和特征值
-  Roe_Eig_x(U, U_, LAMDA_, a_, R_, L_);
-  //计算alpha_
   for (i = 2; i <= Nx + 3; i++)
     for (j = 2; j <= Ny + 3; j++)
       if (U[i][j][0] != 0) {
-        for (k = 0; k <= 3; k++) {
-          alpha_[i][j][k] = 0;
-          theta[i][j][k] = 0;
+        double local_LAMDA_[4];
+
+        local_LAMDA_[0] = U_[i][j][1] - a_[i][j][0];
+        local_LAMDA_[1] = U_[i][j][1];
+        local_LAMDA_[2] = U_[i][j][1] + a_[i][j][0];
+        local_LAMDA_[3] = U_[i][j][1];
+        for (k = 0; k <= 3; k++)  //这里对lambda做一个修正,防止声速0点出现的问题
+        {
+          if (local_LAMDA_[k] >= 0) {
+            local_LAMDA_[k] = 0.5 * (local_LAMDA_[k] + sqrt(local_LAMDA_[k] * local_LAMDA_[k] + 1e-8));
+          } else
+            local_LAMDA_[k] = 0.5 * (local_LAMDA_[k] - sqrt(local_LAMDA_[k] * local_LAMDA_[k] + 1e-8));
         }
-        for (k = 0; k <= 3; k++)
-          for (l = 0; l <= 3; l++) alpha_[i][j][k] += L_[i][j][k][l] * (U[i + 1][j][l] - U[i][j][l]);
-        for (k = 0; k <= 3; k++)
-          for (l = 0; l <= 3; l++) theta[i][j][k] += fabs(LAMDA_[i][j][l][l]) * alpha_[i][j][l] * R_[i][j][k][l];
+
+        double u, v, a, rou, H;
+        rou = U_[i][j][0];
+        u = U_[i][j][1];
+        v = U_[i][j][2];
+        a = a_[i][j][0];
+        H = U_[i][j][3];
+        double local_R_[4][4];
+        local_R_[0][0] = 1;
+        local_R_[0][1] = 1;
+        local_R_[0][2] = 1;
+        local_R_[0][3] = 0;
+        local_R_[1][0] = -a + u;
+        local_R_[1][1] = u;
+        local_R_[1][2] = u + a;
+        local_R_[1][3] = 0;
+        local_R_[2][0] = v;
+        local_R_[2][1] = v;
+        local_R_[2][2] = v;
+        local_R_[2][3] = 1;
+        local_R_[3][0] = H - a * u;
+        local_R_[3][1] = 0.5 * (u * u + v * v);
+        local_R_[3][2] = H + u * a;
+        local_R_[3][3] = v;
+
+        double b1, b2;
+        b2 = (GAMA - 1) / a / a;
+        b1 = b2 * (u * u + v * v) / 2;
+        double local_L_[4][4];
+        local_L_[0][0] = (b1 + u / a) / 2;
+        local_L_[0][1] = -(b2 * u + 1 / a) / 2;
+        local_L_[0][2] = -b2 * v / 2;
+        local_L_[0][3] = b2 / 2;
+        local_L_[1][0] = 1 - b1;
+        local_L_[1][1] = b2 * u;
+        local_L_[1][2] = b2 * v;
+        local_L_[1][3] = -b2;
+        local_L_[2][0] = 0.5 * (b1 - u / a);
+        local_L_[2][1] = 0.5 * (1 / a - b2 * u);
+        local_L_[2][2] = -0.5 * b2 * v;
+        local_L_[2][3] = b2 / 2;
+        local_L_[3][0] = -v;
+        local_L_[3][1] = 0;
+        local_L_[3][2] = 1;
+        local_L_[3][3] = 0;
+
+        double local_alpha_[4];
+        for (k = 0; k <= 3; k++) {
+          local_alpha_[k] = 0;
+          for (l = 0; l <= 3; l++) local_alpha_[k] += local_L_[k][l] * (U[i + 1][j][l] - U[i][j][l]);
+        }
+        for (k = 0; k <= 3; k++) {
+          theta[i][j][k] = 0;
+          for (l = 0; l <= 3; l++) theta[i][j][k] += fabs(local_LAMDA_[l]) * local_alpha_[l] * local_R_[k][l];
+        }
       }
 
   // U2F
@@ -600,27 +647,77 @@ void Roe_y(double U[Nx + 7][Ny + 7][4], double U_[Nx + 7][Ny + 7][4], double L_[
   RoeAVG_y(U, U_, a_);
   dt = CFL_(U_, a_, dx, dy, ROECFL);
   r = dt / dy;
-  //求特征向量和特征值
-  Roe_Eig_y(U, U_, LAMDA_, a_, R_, L_);
-  //计算alpha_
   for (i = 2; i <= Nx + 3; i++)
     for (j = 2; j <= Ny + 3; j++)
-      if (U[i][j][0] != 0)
+      if (U[i][j][0] != 0) {
+        double local_LAMDA_[4];
+        local_LAMDA_[0] = U_[i][j][2] - a_[i][j][0];
+        local_LAMDA_[1] = U_[i][j][2];
+        local_LAMDA_[2] = U_[i][j][2] + a_[i][j][0];
+        local_LAMDA_[3] = U_[i][j][2];
         for (k = 0; k <= 3; k++) {
-          alpha_[i][j][k] = 0;
-          theta[i][j][k] = 0;
+          if (local_LAMDA_[k] >= 0) {
+            local_LAMDA_[k] = 0.5 * (local_LAMDA_[k] + sqrt(local_LAMDA_[k] * local_LAMDA_[k] + 1e-8));
+          } else
+            local_LAMDA_[k] = 0.5 * (local_LAMDA_[k] - sqrt(local_LAMDA_[k] * local_LAMDA_[k] + 1e-8));
         }
-  for (i = 2; i <= Nx + 3; i++)
-    for (j = 2; j <= Ny + 3; j++)
-      if (U[i][j][0] != 0)
-        for (k = 0; k <= 3; k++)
-          for (l = 0; l <= 3; l++) alpha_[i][j][k] += L_[i][j][k][l] * (U[i][j + 1][l] - U[i][j][l]);
-  //计算theta项
-  for (i = 2; i <= Nx + 3; i++)
-    for (j = 2; j <= Ny + 3; j++)
-      if (U[i][j][0] != 0)
-        for (k = 0; k <= 3; k++)
-          for (l = 0; l <= 3; l++) theta[i][j][k] += fabs(LAMDA_[i][j][l][l]) * alpha_[i][j][l] * R_[i][j][k][l];
+
+        double u, v, a, rou, H;
+        rou = U_[i][j][0];
+        u = U_[i][j][1];
+        v = U_[i][j][2];
+        a = a_[i][j][0];
+        H = U_[i][j][3];
+        double local_R_[4][4];
+        local_R_[0][0] = 1;
+        local_R_[0][1] = 1;
+        local_R_[0][2] = 1;
+        local_R_[0][3] = 0;
+        local_R_[1][0] = u;
+        local_R_[1][1] = u;
+        local_R_[1][2] = u;
+        local_R_[1][3] = 1;
+        local_R_[2][0] = v - a;
+        local_R_[2][1] = v;
+        local_R_[2][2] = v + a;
+        local_R_[2][3] = 0;
+        local_R_[3][0] = H - a * v;
+        local_R_[3][1] = 0.5 * (u * u + v * v);
+        local_R_[3][2] = H + v * a;
+        local_R_[3][3] = u;
+
+        double b1, b2;
+        b2 = (GAMA - 1) / a / a;
+        b1 = b2 * (u * u + v * v) / 2;
+        double local_L_[4][4];
+        local_L_[0][0] = (b1 + v / a) / 2;
+        local_L_[0][1] = b2 * u / 2;
+        local_L_[0][2] = -(b2 * v + 1 / a) / 2;
+        local_L_[0][3] = b2 / 2;
+        local_L_[1][0] = 1 - b1;
+        local_L_[1][1] = b2 * u;
+        local_L_[1][2] = b2 * v;
+        local_L_[1][3] = -b2;
+        local_L_[2][0] = 0.5 * (b1 - v / a);
+        local_L_[2][1] = -0.5 * (b2 * u);
+        local_L_[2][2] = 0.5 * (1 / a - b2 * v);
+        local_L_[2][3] = b2 / 2;
+        local_L_[3][0] = -u;
+        local_L_[3][1] = 1;
+        local_L_[3][2] = 0;
+        local_L_[3][3] = 0;
+
+        double local_alpha_[4];
+        for (k = 0; k <= 3; k++) {
+          local_alpha_[k] = 0;
+          for (l = 0; l <= 3; l++) local_alpha_[k] += local_L_[k][l] * (U[i][j + 1][l] - U[i][j][l]);
+        }
+        for (k = 0; k <= 3; k++) {
+          theta[i][j][k] = 0;
+          for (l = 0; l <= 3; l++) theta[i][j][k] += fabs(local_LAMDA_[l]) * local_alpha_[l] * local_R_[k][l];
+        }
+      }
+
   // U2G
   for (i = 2; i <= Nx + 4; i++)
     for (j = 2; j <= Ny + 4; j++)
@@ -642,7 +739,6 @@ void Roe_y(double U[Nx + 7][Ny + 7][4], double U_[Nx + 7][Ny + 7][4], double L_[
       for (k = 0; k <= 3; k++) U[i][j][k] = U[i][j][k] - r * (G_[i][j][k] - G_[i][j - 1][k]);
 }
 
-
-#endif // ROE_FUSION
+#endif  // ROE_FUSION
 
 #endif
