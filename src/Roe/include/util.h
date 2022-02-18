@@ -1,14 +1,15 @@
 #ifndef __UTIL_H
 #define __UTIL_H
 
+#include <sys/time.h>
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
-#include <sys/time.h>
 #include <fstream>
 #include <unordered_map>
 
 #define ENO_FUSION
+#define MUSCL_FUSION
 
 #define GAMA 1.4
 #define PI 3.1415926
@@ -345,13 +346,11 @@ void virtual_clear(double U[Nx + 7][Ny + 7][4], double dx, double dy) {
 }
 
 struct timer {
-  std::unordered_map<const char*, double> elapsed_time_ms;  
-  std::unordered_map<const char*, int> count;  
+  std::unordered_map<const char*, double> elapsed_time_ms;
+  std::unordered_map<const char*, int> count;
   timeval s, e;
 
-  void start(const char* func) {
-    gettimeofday(&s, NULL);
-  }
+  void start(const char* func) { gettimeofday(&s, NULL); }
   void stop(const char* func) {
     gettimeofday(&e, NULL);
     count[func]++;

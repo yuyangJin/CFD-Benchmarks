@@ -230,7 +230,6 @@ void ENO_y(double U[Nx + 7][Ny + 7][4], double G[Nx + 7][Ny + 7][4], double Gp[N
 
 #else
 
-
 //利用Roe平均以后的值计算x方向的特征值与特征向量
 void LF_x(double U[Nx + 7][Ny + 7][4], double LAMDA_[Nx + 7][Ny + 7][4][4], double F[Nx + 7][Ny + 7][4],
           double Fp[Nx + 7][Ny + 7][4], double Fd[Nx + 7][Ny + 7][4]) {
@@ -294,31 +293,31 @@ void ENO_x(double U[Nx + 7][Ny + 7][4], double F[Nx + 7][Ny + 7][4], double Fp[N
           //判断差商大小并且赋值
           if (fabs(U[i + 1][j][k] - U[i][j][k]) > fabs(U[i][j][k] - U[i - 1][j][k]) &&
               fabs(U[i + 1][j][k] - U[i][j][k]) > fabs(U[i - 1][j][k] - U[i - 2][j][k]))
-            //F_p[i][j][k] = q3p[i][j][k][0];
+            // F_p[i][j][k] = q3p[i][j][k][0];
             F_p[i][j][k] = 1.0 / 3.0 * Fp[i - 2][j][k] - 7.0 / 6.0 * Fp[i - 1][j][k] + 11.0 / 6.0 * Fp[i][j][k];
           else {
             if (fabs(U[i][j][k] - U[i - 1][j][k]) > fabs(U[i + 1][j][k] - U[i][j][k]) &&
                 fabs(U[i][j][k] - U[i - 1][j][k]) > fabs(U[i + 2][j][k] - U[i + 1][j][k]))
-              //F_p[i][j][k] = q3p[i][j][k][2];
+              // F_p[i][j][k] = q3p[i][j][k][2];
               F_p[i][j][k] = 1.0 / 3.0 * Fp[i][j][k] + 5.0 / 6.0 * Fp[i + 1][j][k] - 1.0 / 6.0 * Fp[i + 2][j][k];
             else
-              //F_p[i][j][k] = q3p[i][j][k][1];
+              // F_p[i][j][k] = q3p[i][j][k][1];
               F_p[i][j][k] = -1.0 / 6.0 * Fp[i - 1][j][k] + 5.0 / 6.0 * Fp[i][j][k] + 1.0 / 3.0 * Fp[i + 1][j][k];
           }
           if (fabs(U[i + 2][j][k] - U[i + 1][j][k]) > fabs(U[i + 1][j][k] - U[i][j][k]) &&
               fabs(U[i + 2][j][k] - U[i + 1][j][k]) > fabs(U[i][j][k] - U[i - 1][j][k]))
-            //F_d[i][j][k] = q3d[i][j][k][0];
+            // F_d[i][j][k] = q3d[i][j][k][0];
             F_d[i][j][k] = -1.0 / 6.0 * Fd[i - 1][j][k] + 5.0 / 6.0 * Fd[i][j][k] + 1.0 / 3.0 * Fd[i + 1][j][k];
           else {
             if (fabs(U[i + 1][j][k] - U[i][j][k]) > fabs(U[i + 2][j][k] - U[i + 1][j][k]) &&
                 fabs(U[i + 1][j][k] - U[i][j][k]) > fabs(U[i + 3][j][k] - U[i + 2][j][k]))
-              //F_d[i][j][k] = q3d[i][j][k][2];
+              // F_d[i][j][k] = q3d[i][j][k][2];
               F_d[i][j][k] = 11.0 / 6.0 * Fd[i + 1][j][k] - 7.0 / 6.0 * Fd[i + 2][j][k] + 1.0 / 3.0 * Fd[i + 3][j][k];
             else
-              //F_d[i][j][k] = q3d[i][j][k][1];
+              // F_d[i][j][k] = q3d[i][j][k][1];
               F_d[i][j][k] = 1.0 / 3.0 * Fd[i][j][k] + 5.0 / 6.0 * Fd[i + 1][j][k] - 1.0 / 6.0 * Fd[i + 2][j][k];
           }
-          
+
           // 计算F_
           F_[i][j][k] = F_p[i][j][k] + F_d[i][j][k];
         }
@@ -400,28 +399,28 @@ void ENO_y(double U[Nx + 7][Ny + 7][4], double G[Nx + 7][Ny + 7][4], double Gp[N
           //判断差商大小并且赋值
           if (fabs(U[i][j + 1][k] - U[i][j][k]) > fabs(U[i][j][k] - U[i][j - 1][k]) &&
               fabs(U[i][j + 1][k] - U[i][j][k]) > fabs(U[i][j - 1][k] - U[i][j - 2][k]))
-            //G_p[i][j][k] = q3p[i][j][k][0];
+            // G_p[i][j][k] = q3p[i][j][k][0];
             G_p[i][j][k] = 1.0 / 3.0 * Gp[i][j - 2][k] - 7.0 / 6.0 * Gp[i][j - 1][k] + 11.0 / 6.0 * Gp[i][j][k];
           else {
             if (fabs(U[i][j][k] - U[i][j - 1][k]) > fabs(U[i][j + 1][k] - U[i][j][k]) &&
                 fabs(U[i][j][k] - U[i][j - 1][k]) > fabs(U[i][j + 2][k] - U[i][j + 1][k]))
-              //G_p[i][j][k] = q3p[i][j][k][2];
+              // G_p[i][j][k] = q3p[i][j][k][2];
               G_p[i][j][k] = 1.0 / 3.0 * Gp[i][j][k] + 5.0 / 6.0 * Gp[i][j + 1][k] - 1.0 / 6.0 * Gp[i][j + 2][k];
             else
-              //G_p[i][j][k] = q3p[i][j][k][1];
+              // G_p[i][j][k] = q3p[i][j][k][1];
               G_p[i][j][k] = -1.0 / 6.0 * Gp[i][j - 1][k] + 5.0 / 6.0 * Gp[i][j][k] + 1.0 / 3.0 * Gp[i][j + 1][k];
           }
           if (fabs(U[i][j + 2][k] - U[i][j + 1][k]) > fabs(U[i][j + 1][k] - U[i][j][k]) &&
               fabs(U[i][j + 2][k] - U[i][j + 1][k]) > fabs(U[i][j][k] - U[i][j - 1][k]))
-            //G_d[i][j][k] = q3d[i][j][k][0];
+            // G_d[i][j][k] = q3d[i][j][k][0];
             G_d[i][j][k] = -1.0 / 6.0 * Gd[i][j - 1][k] + 5.0 / 6.0 * Gd[i][j][k] + 1.0 / 3.0 * Gd[i][j + 1][k];
           else {
             if (fabs(U[i][j + 1][k] - U[i][j][k]) > fabs(U[i][j + 2][k] - U[i][j + 1][k]) &&
                 fabs(U[i][j + 1][k] - U[i][j][k]) > fabs(U[i][j + 3][k] - U[i][j + 2][k]))
-              //G_d[i][j][k] = q3d[i][j][k][2];
+              // G_d[i][j][k] = q3d[i][j][k][2];
               G_d[i][j][k] = 11.0 / 6.0 * Gd[i][j + 1][k] - 7.0 / 6.0 * Gd[i][j + 2][k] + 1.0 / 3.0 * Gd[i][j + 3][k];
             else
-              //G_d[i][j][k] = q3d[i][j][k][1];
+              // G_d[i][j][k] = q3d[i][j][k][1];
               G_d[i][j][k] = 1.0 / 3.0 * Gd[i][j][k] + 5.0 / 6.0 * Gd[i][j + 1][k] - 1.0 / 6.0 * Gd[i][j + 2][k];
           }
 
@@ -440,6 +439,6 @@ void ENO_y(double U[Nx + 7][Ny + 7][4], double G[Nx + 7][Ny + 7][4], double Gp[N
       for (k = 0; k <= 3; k++) U[i][j][k] = U[i][j][k] - r * (G_[i][j][k] - G_[i][j - 1][k]);
 }
 
-#endif // ENO_FUSION
+#endif  // ENO_FUSION
 
 #endif
