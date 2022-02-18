@@ -8,7 +8,7 @@ double L_[Nx + 7][Ny + 7][4][4], R_[Nx + 7][Ny + 7][4][4];
 double a_[Nx + 7][Ny + 7][1], LAMDA_[Nx + 7][Ny + 7][4][4];
 double G[Nx + 7][Ny + 7][4], G_[Nx + 7][Ny + 7][4], F[Nx + 7][Ny + 7][4], F_[Nx + 7][Ny + 7][4];
 
-// ENO
+// MUSCL
 double U_L[Nx + 7][Ny + 7][4], U_R[Nx + 7][Ny + 7][4];
 double Fp[Nx + 7][Ny + 7][4], Fd[Nx + 7][Ny + 7][4];
 double Gp[Nx + 7][Ny + 7][4], Gd[Nx + 7][Ny + 7][4];
