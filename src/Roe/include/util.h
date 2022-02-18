@@ -11,6 +11,7 @@
 #define ENO_FUSION
 #define MUSCL_FUSION
 #define ROE_FUSION
+#define UPWINDTVD_FUSION
 
 #define GAMA 1.4
 #define PI 3.1415926
