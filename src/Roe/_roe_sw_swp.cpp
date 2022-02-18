@@ -830,10 +830,15 @@ void U2FpFd_AVG(double U_L[4],double U_R[4],double Fp[4],double Fd[4])
 	lambda3p=0.5*(fabs(lambda3)+lambda3);
 	lambda4p=0.5*(fabs(lambda4)+lambda4);
 	//特征值修正
-	lambda1p=0.5*(lambda1p+pow(lambda1p*lambda1p+pow(10,-16),0.5));
-	lambda2p=0.5*(lambda2p+pow(lambda2p*lambda2p+pow(10,-16),0.5));
-	lambda3p=0.5*(lambda3p+pow(lambda3p*lambda3p+pow(10,-16),0.5));
-	lambda4p=0.5*(lambda4p+pow(lambda4p*lambda4p+pow(10,-16),0.5));
+	//lambda1p=0.5*(lambda1p+pow(lambda1p*lambda1p+pow(10,-16),0.5));
+	//lambda2p=0.5*(lambda2p+pow(lambda2p*lambda2p+pow(10,-16),0.5));
+	//lambda3p=0.5*(lambda3p+pow(lambda3p*lambda3p+pow(10,-16),0.5));
+	//lambda4p=0.5*(lambda4p+pow(lambda4p*lambda4p+pow(10,-16),0.5));
+	lambda1p=0.5*(lambda1p+sqrt(lambda1p*lambda1p+1e-16));
+	lambda2p=0.5*(lambda2p+sqrt(lambda2p*lambda2p+1e-16));
+	lambda3p=0.5*(lambda3p+sqrt(lambda3p*lambda3p+1e-16));
+	lambda4p=0.5*(lambda4p+sqrt(lambda4p*lambda4p+1e-16));
+
 	Fp[0]=rou/2.0/GAMA*(2*(GAMA-1)*lambda1p+lambda3p+lambda4p);
 	Fp[1]=rou/2.0/GAMA*(2*u*(GAMA-1)*lambda1p+(u-a)*lambda3p+(u+a)*lambda4p);
 	Fp[2]=rou/2.0/GAMA*(v*2*(GAMA-1)*lambda1p+v*lambda3p+v*lambda4p);
@@ -853,10 +858,15 @@ void U2FpFd_AVG(double U_L[4],double U_R[4],double Fp[4],double Fd[4])
 	lambda2d=-0.5*(fabs(lambda2)-lambda2);
 	lambda3d=-0.5*(fabs(lambda3)-lambda3);
 	lambda4d=-0.5*(fabs(lambda4)-lambda4);
-	lambda1d=0.5*(lambda1d-pow(lambda1d*lambda1d+pow(10,-16),0.5));
-	lambda2d=0.5*(lambda2d-pow(lambda2d*lambda2d+pow(10,-16),0.5));
-	lambda3d=0.5*(lambda3d-pow(lambda3d*lambda3d+pow(10,-16),0.5));
-	lambda4d=0.5*(lambda4d-pow(lambda4d*lambda4d+pow(10,-16),0.5));
+	//lambda1d=0.5*(lambda1d-pow(lambda1d*lambda1d+pow(10,-16),0.5));
+	//lambda2d=0.5*(lambda2d-pow(lambda2d*lambda2d+pow(10,-16),0.5));
+	//lambda3d=0.5*(lambda3d-pow(lambda3d*lambda3d+pow(10,-16),0.5));
+	//lambda4d=0.5*(lambda4d-pow(lambda4d*lambda4d+pow(10,-16),0.5));
+	lambda1d=0.5*(lambda1d-sqrt(lambda1d*lambda1d+1e-16));
+	lambda2d=0.5*(lambda2d-sqrt(lambda2d*lambda2d+1e-16));
+	lambda3d=0.5*(lambda3d-sqrt(lambda3d*lambda3d+1e-16));
+	lambda4d=0.5*(lambda4d-sqrt(lambda4d*lambda4d+1e-16));
+
 	Fd[0]=rou/2.0/GAMA*(2*(GAMA-1)*lambda1d+lambda3d+lambda4d);
 	Fd[1]=rou/2.0/GAMA*(2*u*(GAMA-1)*lambda1d+(u-a)*lambda3d+(u+a)*lambda4d);
 	Fd[2]=rou/2.0/GAMA*(v*2*(GAMA-1)*lambda1d+v*lambda3d+v*lambda4d);
@@ -958,10 +968,15 @@ void U2GpGd_AVG(double U_L[4],double U_R[4],double Gp[4],double Gd[4])
 	lambda2p=0.5*(fabs(lambda2)+lambda2);
 	lambda3p=0.5*(fabs(lambda3)+lambda3);
 	lambda4p=0.5*(fabs(lambda4)+lambda4);
-	lambda1p=0.5*(lambda1p+pow(lambda1p*lambda1p+pow(10,-16),0.5));
-	lambda2p=0.5*(lambda2p+pow(lambda2p*lambda2p+pow(10,-16),0.5));
-	lambda3p=0.5*(lambda3p+pow(lambda3p*lambda3p+pow(10,-16),0.5));
-	lambda4p=0.5*(lambda4p+pow(lambda4p*lambda4p+pow(10,-16),0.5));
+	//lambda1p=0.5*(lambda1p+pow(lambda1p*lambda1p+pow(10,-16),0.5));
+	//lambda2p=0.5*(lambda2p+pow(lambda2p*lambda2p+pow(10,-16),0.5));
+	//lambda3p=0.5*(lambda3p+pow(lambda3p*lambda3p+pow(10,-16),0.5));
+	//lambda4p=0.5*(lambda4p+pow(lambda4p*lambda4p+pow(10,-16),0.5));
+	lambda1p=0.5*(lambda1p+sqrt(lambda1p*lambda1p+1e-16));
+	lambda2p=0.5*(lambda2p+sqrt(lambda2p*lambda2p+1e-16));
+	lambda3p=0.5*(lambda3p+sqrt(lambda3p*lambda3p+1e-16));
+	lambda4p=0.5*(lambda4p+sqrt(lambda4p*lambda4p+1e-16));
+
 	Gp[0]=rou/2.0/GAMA*(2*(GAMA-1)*lambda1p+lambda3p+lambda4p);
 	Gp[1]=rou/2.0/GAMA*(u*2*(GAMA-1)*lambda1p+u*lambda3p+u*lambda4p);
 	Gp[2]=rou/2.0/GAMA*(2*v*(GAMA-1)*lambda1p+(v-a)*lambda3p+(v+a)*lambda4p);
@@ -981,10 +996,15 @@ void U2GpGd_AVG(double U_L[4],double U_R[4],double Gp[4],double Gd[4])
 	lambda2d=-0.5*(fabs(lambda2)-lambda2);
 	lambda3d=-0.5*(fabs(lambda3)-lambda3);
 	lambda4d=-0.5*(fabs(lambda4)-lambda4);
-	lambda1d=0.5*(lambda1d-pow(lambda1d*lambda1d+pow(10,-16),0.5));
-	lambda2d=0.5*(lambda2d-pow(lambda2d*lambda2d+pow(10,-16),0.5));
-	lambda3d=0.5*(lambda3d-pow(lambda3d*lambda3d+pow(10,-16),0.5));
-	lambda4d=0.5*(lambda4d-pow(lambda4d*lambda4d+pow(10,-16),0.5));
+	//lambda1d=0.5*(lambda1d-pow(lambda1d*lambda1d+pow(10,-16),0.5));
+	//lambda2d=0.5*(lambda2d-pow(lambda2d*lambda2d+pow(10,-16),0.5));
+	//lambda3d=0.5*(lambda3d-pow(lambda3d*lambda3d+pow(10,-16),0.5));
+	//lambda4d=0.5*(lambda4d-pow(lambda4d*lambda4d+pow(10,-16),0.5));
+	lambda1d=0.5*(lambda1d-sqrt(lambda1d*lambda1d+1e-16));
+	lambda2d=0.5*(lambda2d-sqrt(lambda2d*lambda2d+1e-16));
+	lambda3d=0.5*(lambda3d-sqrt(lambda3d*lambda3d+1e-16));
+	lambda4d=0.5*(lambda4d-sqrt(lambda4d*lambda4d+1e-16));
+
 	Gd[0]=rou/2.0/GAMA*(2*(GAMA-1)*lambda1d+lambda3d+lambda4d);
 	Gd[1]=rou/2.0/GAMA*(u*2*(GAMA-1)*lambda1d+u*lambda3d+u*lambda4d);
 	Gd[2]=rou/2.0/GAMA*(2*v*(GAMA-1)*lambda1d+(v-a)*lambda3d+(v+a)*lambda4d);
@@ -1832,6 +1852,7 @@ void ENO_x(double U[Nx+7][Ny+7][4],double F[Nx+7][Ny+7][4],double Fp[Nx+7][Ny+7]
 		   double F_p[Nx+7][Ny+7][4],double F_d[Nx+7][Ny+7][4],double F_[Nx+7][Ny+7][4],
 		   double q3p[Nx+7][Ny+7][4][3],double q3d[Nx+7][Ny+7][4][3],double dx,double dy,double dt)       //此函数将之前计算的特征之余特征向量通过TVD算法计算U
 {
+	//gettimeofday(&ts, NULL);
 	int i,j,k;
 	double r;
 	dt=CFL(U,dx,dy,ENOCFL);
@@ -1958,6 +1979,9 @@ void ENO_x(double U[Nx+7][Ny+7][4],double F[Nx+7][Ny+7][4],double Fp[Nx+7][Ny+7]
 	
 #endif
 
+	//gettimeofday(&te, NULL);
+	//double ms = get_elapsed_time_ms(ts, te);
+	//cout << "ENO_x ms: " << ms << endl;
 }
 
 ///////////-------------------------------y
@@ -2190,7 +2214,11 @@ void ENO_Solver(double U[Nx+7][Ny+7][4],double U1[Nx+7][Ny+7][4],double U2[Nx+7]
 {
 	bound(U,dx,dy);
 	LF_x(U,LAMDA_,F,Fp,Fd);
+	gettimeofday(&ts, NULL);
 	ENO_x(U,F,Fp,Fd,F_p,F_d,F_,q3p,q3d,dx,dy,dt);
+	gettimeofday(&te, NULL);
+	double ms = get_elapsed_time_ms(ts, te);
+	cout << "first eno_x ms: " << ms << endl;
 	bound(U,dx,dy);
 	LF_y(U,LAMDA_,G,Gp,Gd);
 	ENO_y(U,G,Gp,Gd,G_p,G_d,G_,q3p,q3d,dx,dy,dt);
@@ -3105,18 +3133,22 @@ int main(int argc, char** argv)
 	}
 	if(method==6)
 	{
-		gettimeofday(&ts, NULL);
+		//gettimeofday(&ts, NULL);
 		while(T<=TT)
 		{
 			dt=CFL(U,dx,dy,ENOCFL);
+			//gettimeofday(&ts, NULL);
 			ENO_Solver(U,U1,U2,F,Fp,Fd,F_p,F_d,F_,G,Gp,Gd,F_p,F_d,F_,LAMDA_,q3p,q3d,dx,dy,dt);
+			//gettimeofday(&te, NULL);
+			//double ms = get_elapsed_time_ms(ts, te);
+			//cout << "ms: " << ms << "  dt: " << dt << "  T: " << T << endl;
 			T+=dt;
 			n++;              
 			m+=Animation(U,dx,dy,n,m,method);	
 		}
-		gettimeofday(&te, NULL);
-		double ms = get_elapsed_time_ms(ts, te);
-		cout << "6 method ms: " << ms << endl;
+		//gettimeofday(&te, NULL);
+		//double ms = get_elapsed_time_ms(ts, te);
+		//cout << "6 method ms: " << ms << endl;
 	}
 	if(method==7)
 	{

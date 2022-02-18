@@ -1,12 +1,7 @@
-add_executable(_roe_sw_swp
-_roe_sw_swp.cpp
-)
+project(ROE CXX)
 
-# set_target_properties(
-# 	RK
+add_executable(_roe_sw_swp _roe_sw_swp.cpp)
 
-# 	PROPERTIES
-# 	ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib"
-# 	LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib"
-# 	RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
-# )
+add_executable(eno eno.cpp)
+include_directories(${PROJECT_SOURCE_DIR}/include)
+include_directories(${PROJECT_SOURCE_DIR}/kernels)
