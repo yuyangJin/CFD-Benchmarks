@@ -358,9 +358,13 @@ struct timer {
     count[func]++;
     elapsed_time_ms[func] += get_elapsed_time_ms(s, e);
   }
-  void info(const char* func, double& time, int& n) {
-    time = elapsed_time_ms[func];
-    n = count[func];
+  void show_all() {
+    for (auto it = elapsed_time_ms.begin(); it != elapsed_time_ms.end(); ++it) {
+      auto func = it->first;
+      double t = it->second;
+      int c = count[func];
+      printf("%s: %lf ms / %d count, avg %lf ms\n", func, t, c, t / c);
+    }
   }
 };
 

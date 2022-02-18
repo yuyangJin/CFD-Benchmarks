@@ -54,10 +54,7 @@ int main(int argc, char** argv) {
   printf("Roe total time: %lf ms\n", ms);
   printf("Roe iter: %d\n", n);
 
-  double roe_ms;
-  int roe_n;
-  func_timer.info("Roe_x", roe_ms, roe_n);
-  printf("Roe_x: %lf ms / %d count, avg %lf ms\n", roe_ms, roe_n, roe_ms / roe_n);
+  func_timer.show_all();
 
   if (argc == 2) {
     // result check

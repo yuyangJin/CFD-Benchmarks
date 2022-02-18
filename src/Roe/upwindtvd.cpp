@@ -58,10 +58,7 @@ int main(int argc, char** argv) {
   printf("UpWindTVD total time: %lf ms\n", ms);
   printf("UpWindTVD iter: %d\n", n);
 
-  double upwindtvd_ms;
-  int upwindtvd_n;
-  func_timer.info("UpWindTVD_x", upwindtvd_ms, upwindtvd_n);
-  printf("UpWindTVD_x: %lf ms / %d count, avg %lf ms\n", upwindtvd_ms, upwindtvd_n, upwindtvd_ms / upwindtvd_n);
+  func_timer.show_all();
 
   if (argc == 2) {
     // result check

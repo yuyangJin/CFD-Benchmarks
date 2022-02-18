@@ -62,10 +62,7 @@ int main(int argc, char** argv) {
   printf("ENO total time: %lf ms\n", ms);
   printf("ENO iter: %d\n", n);
 
-  double enox_ms;
-  int enox_n;
-  func_timer.info("ENO_x", enox_ms, enox_n);
-  printf("ENO_x: %lf ms / %d count, avg %lf ms\n", enox_ms, enox_n, enox_ms / enox_n);
+  func_timer.show_all();
 
   if (argc == 2) {
     // result check

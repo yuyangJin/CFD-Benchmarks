@@ -57,10 +57,7 @@ int main(int argc, char** argv) {
   printf("MUSCL total time: %lf ms\n", ms);
   printf("MUSCL iter: %d\n", n);
 
-  double muscl_ms;
-  int muscl_n;
-  func_timer.info("MUSCL_x", muscl_ms, muscl_n);
-  printf("MUSCL_x: %lf ms / %d count, avg %lf ms\n", muscl_ms, muscl_n, muscl_ms / muscl_n);
+  func_timer.show_all();
 
   if (argc == 2) {
     // result check
