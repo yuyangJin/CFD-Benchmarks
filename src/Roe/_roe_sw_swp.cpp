@@ -13,13 +13,6 @@
 #include <cmath>
 #include <iomanip> 
 #include <string>
-#include <sys/time.h>
-
-timeval ts, te;
-#define get_elapsed_time_ms(_s, _e) (1000.0 * (_e.tv_sec - _s.tv_sec) + (_e.tv_usec - _s.tv_usec) / 1000.0)
-
-//#define ENO_FUSION
-#define MUSCL_FUSION
 
 using namespace std;
 
@@ -29,7 +22,7 @@ using namespace std;
 #define MAX(x,y)(((x)>(y))?(x):(y))
 #define Lx 4.0                  //x方向的无量纲长度
 #define Ly 1.0                
-#define TT 0.1                  //总时间
+#define TT 10                  //总时间
 #define Nx 400		          //x方向的分的控制单元数	
 #define Ny 100            //x方向的分的控制单元数
 //各个方法的CFL数
@@ -86,32 +79,6 @@ double fp[Nx+7][Ny+7][4],fd[Nx+7][Ny+7][4];    //紧致格式中用小写的f表
 double gp[Nx+7][Ny+7][4],gd[Nx+7][Ny+7][4],p[Nx+7][Ny+7];  //p是压力
 
 std::string output_dir = string("_result/");
-
-void save(const char* fn) {
-	ofstream out;
-	out.open(fn, ofstream::binary);
-	out.write(reinterpret_cast<const char*>(U), sizeof(double) * (Nx + 7) * (Ny + 7) * 4);
-	out.close();
-}
-
-void compare(const char* fn) {
-	double U_dat[Nx+7][Ny+7][4];
-	ifstream in;
-	in.open(fn, ifstream::binary);
-	in.read(reinterpret_cast<char*>(U_dat), sizeof(double) * (Nx + 7) * (Ny + 7) * 4);
-	in.close();
-	for (int i = 0; i < Nx + 7; ++i) {
-		for (int j = 0; j < Ny + 7; ++j) {
-			for (int k = 0; k < 4; ++k) {
-				if (fabs(U_dat[i][j][k] - U[i][j][k]) >= 1e-6) {
-					cout << "CHECK FAILED" << endl;
-					return;
-				}
-			}
-		}
-	}
-	cout << "CHECK PASS" << endl;
-}
 
 //初始化函数
 //作用:将全场赋初值
@@ -830,15 +797,10 @@ void U2FpFd_AVG(double U_L[4],double U_R[4],double Fp[4],double Fd[4])
 	lambda3p=0.5*(fabs(lambda3)+lambda3);
 	lambda4p=0.5*(fabs(lambda4)+lambda4);
 	//特征值修正
-	//lambda1p=0.5*(lambda1p+pow(lambda1p*lambda1p+pow(10,-16),0.5));
-	//lambda2p=0.5*(lambda2p+pow(lambda2p*lambda2p+pow(10,-16),0.5));
-	//lambda3p=0.5*(lambda3p+pow(lambda3p*lambda3p+pow(10,-16),0.5));
-	//lambda4p=0.5*(lambda4p+pow(lambda4p*lambda4p+pow(10,-16),0.5));
-	lambda1p=0.5*(lambda1p+sqrt(lambda1p*lambda1p+1e-16));
-	lambda2p=0.5*(lambda2p+sqrt(lambda2p*lambda2p+1e-16));
-	lambda3p=0.5*(lambda3p+sqrt(lambda3p*lambda3p+1e-16));
-	lambda4p=0.5*(lambda4p+sqrt(lambda4p*lambda4p+1e-16));
-
+	lambda1p=0.5*(lambda1p+pow(lambda1p*lambda1p+pow(10,-16),0.5));
+	lambda2p=0.5*(lambda2p+pow(lambda2p*lambda2p+pow(10,-16),0.5));
+	lambda3p=0.5*(lambda3p+pow(lambda3p*lambda3p+pow(10,-16),0.5));
+	lambda4p=0.5*(lambda4p+pow(lambda4p*lambda4p+pow(10,-16),0.5));
 	Fp[0]=rou/2.0/GAMA*(2*(GAMA-1)*lambda1p+lambda3p+lambda4p);
 	Fp[1]=rou/2.0/GAMA*(2*u*(GAMA-1)*lambda1p+(u-a)*lambda3p+(u+a)*lambda4p);
 	Fp[2]=rou/2.0/GAMA*(v*2*(GAMA-1)*lambda1p+v*lambda3p+v*lambda4p);
@@ -858,15 +820,10 @@ void U2FpFd_AVG(double U_L[4],double U_R[4],double Fp[4],double Fd[4])
 	lambda2d=-0.5*(fabs(lambda2)-lambda2);
 	lambda3d=-0.5*(fabs(lambda3)-lambda3);
 	lambda4d=-0.5*(fabs(lambda4)-lambda4);
-	//lambda1d=0.5*(lambda1d-pow(lambda1d*lambda1d+pow(10,-16),0.5));
-	//lambda2d=0.5*(lambda2d-pow(lambda2d*lambda2d+pow(10,-16),0.5));
-	//lambda3d=0.5*(lambda3d-pow(lambda3d*lambda3d+pow(10,-16),0.5));
-	//lambda4d=0.5*(lambda4d-pow(lambda4d*lambda4d+pow(10,-16),0.5));
-	lambda1d=0.5*(lambda1d-sqrt(lambda1d*lambda1d+1e-16));
-	lambda2d=0.5*(lambda2d-sqrt(lambda2d*lambda2d+1e-16));
-	lambda3d=0.5*(lambda3d-sqrt(lambda3d*lambda3d+1e-16));
-	lambda4d=0.5*(lambda4d-sqrt(lambda4d*lambda4d+1e-16));
-
+	lambda1d=0.5*(lambda1d-pow(lambda1d*lambda1d+pow(10,-16),0.5));
+	lambda2d=0.5*(lambda2d-pow(lambda2d*lambda2d+pow(10,-16),0.5));
+	lambda3d=0.5*(lambda3d-pow(lambda3d*lambda3d+pow(10,-16),0.5));
+	lambda4d=0.5*(lambda4d-pow(lambda4d*lambda4d+pow(10,-16),0.5));
 	Fd[0]=rou/2.0/GAMA*(2*(GAMA-1)*lambda1d+lambda3d+lambda4d);
 	Fd[1]=rou/2.0/GAMA*(2*u*(GAMA-1)*lambda1d+(u-a)*lambda3d+(u+a)*lambda4d);
 	Fd[2]=rou/2.0/GAMA*(v*2*(GAMA-1)*lambda1d+v*lambda3d+v*lambda4d);
@@ -877,8 +834,6 @@ void MUSCL_x(double U[Nx+7][Ny+7][4],double U_L[Nx+7][Ny+7][4],double U_R[Nx+7][
 {
 	int i,j,k;
 	double r=dt/dx;
-
-#ifndef MUSCL_FUSION
 	//计算U_L和U_R
 	for(i=2;i<=Nx+3;i++)
 		for(j=2;j<=Ny+3;j++)
@@ -913,40 +868,6 @@ void MUSCL_x(double U[Nx+7][Ny+7][4],double U_L[Nx+7][Ny+7][4],double U_R[Nx+7][
 			if(U[i][j][0]!=0)
 				for(k=0;k<=3;k++)
 					U[i][j][k]=U[i][j][k]-r*(F_[i][j][k]-F_[i-1][j][k]);
-#else
-	for(i=2;i<=Nx+3;i++)
-		for(j=2;j<=Ny+3;j++)
-			if(U[i][j][0]!=0) {
-				//计算U_L和U_R
-				for(k=0;k<=3;k++)
-				{
-					U_L[i][j][k]=U[i][j][k]+0.25*(1-K)*minmod(U[i][j][k]-U[i-1][j][k],BETA*(U[i+1][j][k]-U[i][j][k]))
-						+0.25*(1+K)*minmod(U[i+1][j][k]-U[i][j][k],BETA*(U[i][j][k]-U[i-1][j][k]));
-					U_R[i][j][k]=U[i+1][j][k]-0.25*(1-K)*minmod(U[i+2][j][k]-U[i+1][j][k],BETA*(U[i+1][j][k]-U[i][j][k]))
-						-0.25*(1+K)*minmod(U[i+1][j][k]-U[i][j][k],BETA*(U[i+2][j][k]-U[i+1][j][k]));
-				}
-
-				//计算Fp和Fd
-				U2FpFd_AVG(U_L[i][j],U_R[i][j],Fp[i][j],Fd[i][j]);
-				//计算F_
-				for(k=0;k<=3;k++)
-					F_[i][j][k]=Fp[i][j][k]+Fd[i][j][k];
-			}
-
-	//计算U
-	for(i=3;i<=Nx+3;i++)
-		for(j=3;j<=int(0.5/dy)+3;j++)
-			if(U[i][j][0]!=0)
-				for(k=0;k<=3;k++)
-					U[i][j][k]=U[i][j][k]-r*(F_[i][j][k]-F_[i-1][j][k]);
-
-	for(i=int(1.0/dx)+3;i<=int(2.0/dx)+3;i++)       
-		for(j=int(0.5/dy)+4;j<=Ny+3;j++)
-			if(U[i][j][0]!=0)
-				for(k=0;k<=3;k++)
-					U[i][j][k]=U[i][j][k]-r*(F_[i][j][k]-F_[i-1][j][k]);
-
-#endif
 }
 //算Gp和Gd
 void U2GpGd_AVG(double U_L[4],double U_R[4],double Gp[4],double Gd[4])
@@ -968,15 +889,10 @@ void U2GpGd_AVG(double U_L[4],double U_R[4],double Gp[4],double Gd[4])
 	lambda2p=0.5*(fabs(lambda2)+lambda2);
 	lambda3p=0.5*(fabs(lambda3)+lambda3);
 	lambda4p=0.5*(fabs(lambda4)+lambda4);
-	//lambda1p=0.5*(lambda1p+pow(lambda1p*lambda1p+pow(10,-16),0.5));
-	//lambda2p=0.5*(lambda2p+pow(lambda2p*lambda2p+pow(10,-16),0.5));
-	//lambda3p=0.5*(lambda3p+pow(lambda3p*lambda3p+pow(10,-16),0.5));
-	//lambda4p=0.5*(lambda4p+pow(lambda4p*lambda4p+pow(10,-16),0.5));
-	lambda1p=0.5*(lambda1p+sqrt(lambda1p*lambda1p+1e-16));
-	lambda2p=0.5*(lambda2p+sqrt(lambda2p*lambda2p+1e-16));
-	lambda3p=0.5*(lambda3p+sqrt(lambda3p*lambda3p+1e-16));
-	lambda4p=0.5*(lambda4p+sqrt(lambda4p*lambda4p+1e-16));
-
+	lambda1p=0.5*(lambda1p+pow(lambda1p*lambda1p+pow(10,-16),0.5));
+	lambda2p=0.5*(lambda2p+pow(lambda2p*lambda2p+pow(10,-16),0.5));
+	lambda3p=0.5*(lambda3p+pow(lambda3p*lambda3p+pow(10,-16),0.5));
+	lambda4p=0.5*(lambda4p+pow(lambda4p*lambda4p+pow(10,-16),0.5));
 	Gp[0]=rou/2.0/GAMA*(2*(GAMA-1)*lambda1p+lambda3p+lambda4p);
 	Gp[1]=rou/2.0/GAMA*(u*2*(GAMA-1)*lambda1p+u*lambda3p+u*lambda4p);
 	Gp[2]=rou/2.0/GAMA*(2*v*(GAMA-1)*lambda1p+(v-a)*lambda3p+(v+a)*lambda4p);
@@ -996,15 +912,10 @@ void U2GpGd_AVG(double U_L[4],double U_R[4],double Gp[4],double Gd[4])
 	lambda2d=-0.5*(fabs(lambda2)-lambda2);
 	lambda3d=-0.5*(fabs(lambda3)-lambda3);
 	lambda4d=-0.5*(fabs(lambda4)-lambda4);
-	//lambda1d=0.5*(lambda1d-pow(lambda1d*lambda1d+pow(10,-16),0.5));
-	//lambda2d=0.5*(lambda2d-pow(lambda2d*lambda2d+pow(10,-16),0.5));
-	//lambda3d=0.5*(lambda3d-pow(lambda3d*lambda3d+pow(10,-16),0.5));
-	//lambda4d=0.5*(lambda4d-pow(lambda4d*lambda4d+pow(10,-16),0.5));
-	lambda1d=0.5*(lambda1d-sqrt(lambda1d*lambda1d+1e-16));
-	lambda2d=0.5*(lambda2d-sqrt(lambda2d*lambda2d+1e-16));
-	lambda3d=0.5*(lambda3d-sqrt(lambda3d*lambda3d+1e-16));
-	lambda4d=0.5*(lambda4d-sqrt(lambda4d*lambda4d+1e-16));
-
+	lambda1d=0.5*(lambda1d-pow(lambda1d*lambda1d+pow(10,-16),0.5));
+	lambda2d=0.5*(lambda2d-pow(lambda2d*lambda2d+pow(10,-16),0.5));
+	lambda3d=0.5*(lambda3d-pow(lambda3d*lambda3d+pow(10,-16),0.5));
+	lambda4d=0.5*(lambda4d-pow(lambda4d*lambda4d+pow(10,-16),0.5));
 	Gd[0]=rou/2.0/GAMA*(2*(GAMA-1)*lambda1d+lambda3d+lambda4d);
 	Gd[1]=rou/2.0/GAMA*(u*2*(GAMA-1)*lambda1d+u*lambda3d+u*lambda4d);
 	Gd[2]=rou/2.0/GAMA*(2*v*(GAMA-1)*lambda1d+(v-a)*lambda3d+(v+a)*lambda4d);
@@ -1015,7 +926,6 @@ void MUSCL_y(double U[Nx+7][Ny+7][4],double U_L[Nx+7][Ny+7][4],double U_R[Nx+7][
 {
 	int i,j,k;
 	double r=dt/dy;
-#ifndef MUSCL_FUSION
 	//计算U_L和U_R
 	for(i=2;i<=Nx+3;i++)
 		for(j=2;j<=Ny+3;j++)
@@ -1050,38 +960,6 @@ void MUSCL_y(double U[Nx+7][Ny+7][4],double U_L[Nx+7][Ny+7][4],double U_R[Nx+7][
 			if(U[i][j][0]!=0)
 				for(k=0;k<=3;k++)
 					U[i][j][k]=U[i][j][k]-r*(G_[i][j][k]-G_[i][j-1][k]);
-#else
-	for(i=2;i<=Nx+3;i++)
-		for(j=2;j<=Ny+3;j++)
-			if(U[i][j][0]!=0) {
-				//计算U_L和U_R
-				for(k=0;k<=3;k++)
-				{
-					U_L[i][j][k]=U[i][j][k]+0.25*(1-K)*minmod(U[i][j][k]-U[i][j-1][k],BETA*(U[i][j+1][k]-U[i][j][k]))
-						+0.25*(1+K)*minmod(U[i][j+1][k]-U[i][j][k],BETA*(U[i][j][k]-U[i][j-1][k]));
-					U_R[i][j][k]=U[i][j+1][k]-0.25*(1-K)*minmod(U[i][j+2][k]-U[i][j+1][k],BETA*(U[i][j+1][k]-U[i][j][k]))
-						-0.25*(1+K)*minmod(U[i][j+1][k]-U[i][j][k],BETA*(U[i][j+2][k]-U[i][j+1][k]));
-				}
-				//计算Gp和Gd
-				U2GpGd_AVG(U_L[i][j],U_R[i][j],Gp[i][j],Gd[i][j]);
-				//计算G_
-				for(k=0;k<=3;k++)
-					G_[i][j][k]=Gp[i][j][k]+Gd[i][j][k];
-			}
-	//计算U
-	for(i=3;i<=Nx+3;i++)
-		for(j=3;j<=int(0.5/dy)+3;j++)
-			if(U[i][j][0]!=0)
-				for(k=0;k<=3;k++)
-					U[i][j][k]=U[i][j][k]-r*(G_[i][j][k]-G_[i][j-1][k]);
-
-	for(i=int(1.0/dx)+3;i<=int(2.0/dx)+3;i++)       
-		for(j=int(0.5/dy)+4;j<=Ny+3;j++)
-			if(U[i][j][0]!=0)
-				for(k=0;k<=3;k++)
-					U[i][j][k]=U[i][j][k]-r*(G_[i][j][k]-G_[i][j-1][k]);
-
-#endif
 }
 
 void MUSCL_Solver(double U[Nx+7][Ny+7][4],double U_L[Nx+7][Ny+7][4],double U_R[Nx+7][Ny+7][4],double Fp[Nx+7][Ny+7][4],
@@ -1774,7 +1652,6 @@ void LF_x(double U[Nx+7][Ny+7][4],double LAMDA_[Nx+7][Ny+7][4][4],double F[Nx+7]
 {
 	int i,j,k;
 	double rou,u,v,p,a,maxlamda=pow(10,-100);
-#ifndef ENO_FUSION
 	for(i=0;i<=Nx+6;i++)        //对LAMDA_赋值
 		for(j=0;j<=Ny+6;j++)
 			if(U[i][j][0]!=0)
@@ -1783,8 +1660,7 @@ void LF_x(double U[Nx+7][Ny+7][4],double LAMDA_[Nx+7][Ny+7][4][4],double F[Nx+7]
 				u=U[i][j][1]/U[i][j][0];
 				v=U[i][j][2]/U[i][j][0];
 				p=(GAMA-1)*(U[i][j][3]-0.5*rou*(u*u+v*v));
-				//a=pow(p*GAMA/rou,0.5);
-				a=sqrt(p*GAMA/rou);
+				a=pow(p*GAMA/rou,0.5);
 				LAMDA_[i][j][0][0]=u-a;
 				LAMDA_[i][j][1][1]=u;
 				LAMDA_[i][j][2][2]=u+a;
@@ -1810,55 +1686,15 @@ void LF_x(double U[Nx+7][Ny+7][4],double LAMDA_[Nx+7][Ny+7][4][4],double F[Nx+7]
 					Fd[i][j][k]=0.5*(F[i][j][k]-maxlamda*U[i][j][k]);
 				}
 
-#else
-	for(i=0;i<=Nx+6;i++)  
-		for(j=0;j<=Ny+6;j++)
-			if(U[i][j][0]!=0)
-			{
-				//对LAMDA_赋值
-				rou=U[i][j][0];
-				u=U[i][j][1]/U[i][j][0];
-				v=U[i][j][2]/U[i][j][0];
-				p=(GAMA-1)*(U[i][j][3]-0.5*rou*(u*u+v*v));
-				//a=pow(p*GAMA/rou,0.5);
-				a=sqrt(p*GAMA/rou);
-				LAMDA_[i][j][0][0]=u-a;
-				LAMDA_[i][j][1][1]=u;
-				LAMDA_[i][j][2][2]=u+a;
-				LAMDA_[i][j][3][3]=u;
-				for(k=0;k<=3;k++)
-				{					
-					if(fabs(LAMDA_[i][j][k][k])>=maxlamda)maxlamda=fabs(LAMDA_[i][j][k][k]);
-				}
-			}
-
-	for(i=0;i<=Nx+6;i++)  
-		for(j=0;j<=Ny+6;j++)
-			if(U[i][j][0]!=0)
-			{
-				//U2F
-				U2F(U[i][j],F[i][j]);
-
-				//计算Fpd
-				for(k=0;k<=3;k++)
-				{
-					Fp[i][j][k]=0.5*(F[i][j][k]+maxlamda*U[i][j][k]);
-					Fd[i][j][k]=0.5*(F[i][j][k]-maxlamda*U[i][j][k]);
-				}
-			}
-#endif
 }
 void ENO_x(double U[Nx+7][Ny+7][4],double F[Nx+7][Ny+7][4],double Fp[Nx+7][Ny+7][4],double Fd[Nx+7][Ny+7][4],
 		   double F_p[Nx+7][Ny+7][4],double F_d[Nx+7][Ny+7][4],double F_[Nx+7][Ny+7][4],
 		   double q3p[Nx+7][Ny+7][4][3],double q3d[Nx+7][Ny+7][4][3],double dx,double dy,double dt)       //此函数将之前计算的特征之余特征向量通过TVD算法计算U
 {
-	//gettimeofday(&ts, NULL);
 	int i,j,k;
 	double r;
 	dt=CFL(U,dx,dy,ENOCFL);
 	r=dt/dx;
-
-#ifndef ENO_FUSION
 	//计算q3pd q5pd
 	for(i=2;i<=Nx+3;i++)    
 		for(j=2;j<=Ny+3;j++)
@@ -1926,62 +1762,6 @@ void ENO_x(double U[Nx+7][Ny+7][4],double F[Nx+7][Ny+7][4],double Fp[Nx+7][Ny+7]
 			for(k=0;k<=3;k++)
 				U[i][j][k]=U[i][j][k]-r*(F_[i][j][k]-F_[i-1][j][k]);
 	
-#else
-	for(i=2;i<=Nx+3;i++)    
-		for(j=2;j<=Ny+3;j++)
-			if(U[i][j][0]!=0)
-				for(k=0;k<=3;k++)
-				{
-					//计算q3pd q5pd
-					q3p[i][j][k][0]=1.0/3.0*Fp[i-2][j][k]-7.0/6.0*Fp[i-1][j][k]+11.0/6.0*Fp[i][j][k];
-					q3p[i][j][k][1]=-1.0/6.0*Fp[i-1][j][k]+5.0/6.0*Fp[i][j][k]+1.0/3.0*Fp[i+1][j][k];
-					q3p[i][j][k][2]=1.0/3.0*Fp[i][j][k]+5.0/6.0*Fp[i+1][j][k]-1.0/6.0*Fp[i+2][j][k];
-
-					q3d[i][j][k][0]=-1.0/6.0*Fd[i-1][j][k]+5.0/6.0*Fd[i][j][k]+1.0/3.0*Fd[i+1][j][k];
-					q3d[i][j][k][1]=1.0/3.0*Fd[i][j][k]+5.0/6.0*Fd[i+1][j][k]-1.0/6.0*Fd[i+2][j][k];
-					q3d[i][j][k][2]=11.0/6.0*Fd[i+1][j][k]-7.0/6.0*Fd[i+2][j][k]+1.0/3.0*Fd[i+3][j][k];
-
-					//判断差商大小并且赋值
-					if(fabs(U[i+1][j][k]-U[i][j][k])>fabs(U[i][j][k]-U[i-1][j][k])&&fabs(U[i+1][j][k]-U[i][j][k])>fabs(U[i-1][j][k]-U[i-2][j][k]))
-						F_p[i][j][k]=q3p[i][j][k][0];
-					else 
-					{
-						if(fabs(U[i][j][k]-U[i-1][j][k])>fabs(U[i+1][j][k]-U[i][j][k])&&fabs(U[i][j][k]-U[i-1][j][k])>fabs(U[i+2][j][k]-U[i+1][j][k]))
-							F_p[i][j][k]=q3p[i][j][k][2];
-						else
-							F_p[i][j][k]=q3p[i][j][k][1];
-					}
-
-					if(fabs(U[i+2][j][k]-U[i+1][j][k])>fabs(U[i+1][j][k]-U[i][j][k])&&fabs(U[i+2][j][k]-U[i+1][j][k])>fabs(U[i][j][k]-U[i-1][j][k]))
-						F_d[i][j][k]=q3d[i][j][k][0];
-					else
-					{
-						if(fabs(U[i+1][j][k]-U[i][j][k])>fabs(U[i+2][j][k]-U[i+1][j][k])&&fabs(U[i+1][j][k]-U[i][j][k])>fabs(U[i+3][j][k]-U[i+2][j][k]))
-							F_d[i][j][k]=q3d[i][j][k][2];
-						else
-							F_d[i][j][k]=q3d[i][j][k][1];
-					}
-
-					//计算F_
-					F_[i][j][k]=F_p[i][j][k]+F_d[i][j][k];
-				}
-
-	//分区计算U
-	for(i=3;i<=Nx+3;i++)    
-		for(j=3;j<=int(0.5/dy)+3;j++)	
-			for(k=0;k<=3;k++)
-				U[i][j][k]=U[i][j][k]-r*(F_[i][j][k]-F_[i-1][j][k]);
-
-	for(i=int(1.0/dx)+3;i<=int(2.0/dx)+3;i++)    
-		for(j=int(0.5/dy)+4;j<=Ny+3;j++)
-			for(k=0;k<=3;k++)
-				U[i][j][k]=U[i][j][k]-r*(F_[i][j][k]-F_[i-1][j][k]);
-	
-#endif
-
-	//gettimeofday(&te, NULL);
-	//double ms = get_elapsed_time_ms(ts, te);
-	//cout << "ENO_x ms: " << ms << endl;
 }
 
 ///////////-------------------------------y
@@ -1990,8 +1770,6 @@ void LF_y(double U[Nx+7][Ny+7][4],double LAMDA_[Nx+7][Ny+7][4][4],double G[Nx+7]
 {
 	int i,j,k;
 	double rou,u,v,a,p,maxlamda=pow(10,-100);
-
-#ifndef ENO_FUSION
 	for(i=0;i<=Nx+5;i++)        //对LAMDA_赋值
 		for(j=0;j<=Ny+5;j++)
 			if(U[i][j][0]!=0)
@@ -2000,8 +1778,7 @@ void LF_y(double U[Nx+7][Ny+7][4],double LAMDA_[Nx+7][Ny+7][4][4],double G[Nx+7]
 				u=U[i][j][1]/U[i][j][0];
 				v=U[i][j][2]/U[i][j][0];
 				p=(GAMA-1)*(U[i][j][3]-0.5*rou*(u*u+v*v));
-				//a=pow(p*GAMA/rou,0.5);
-				a=sqrt(p*GAMA/rou);
+				a=pow(p*GAMA/rou,0.5);
 				LAMDA_[i][j][0][0]=v-a;
 				LAMDA_[i][j][1][1]=v;
 				LAMDA_[i][j][2][2]=v+a;
@@ -2027,42 +1804,7 @@ void LF_y(double U[Nx+7][Ny+7][4],double LAMDA_[Nx+7][Ny+7][4][4],double G[Nx+7]
 					Gp[i][j][k]=0.5*(G[i][j][k]+maxlamda*U[i][j][k]);
 					Gd[i][j][k]=0.5*(G[i][j][k]-maxlamda*U[i][j][k]);
 				}
-#else
-	for(i=0;i<=Nx+5;i++)        //对LAMDA_赋值
-		for(j=0;j<=Ny+5;j++)
-			if(U[i][j][0]!=0)
-			{
-				rou=U[i][j][0];
-				u=U[i][j][1]/U[i][j][0];
-				v=U[i][j][2]/U[i][j][0];
-				p=(GAMA-1)*(U[i][j][3]-0.5*rou*(u*u+v*v));
-				//a=pow(p*GAMA/rou,0.5);
-				a=sqrt(p*GAMA/rou);
-				LAMDA_[i][j][0][0]=v-a;
-				LAMDA_[i][j][1][1]=v;
-				LAMDA_[i][j][2][2]=v+a;
-				LAMDA_[i][j][3][3]=v;
-				for(k=0;k<=3;k++)
-				{					
-					if(fabs(LAMDA_[i][j][k][k])>=maxlamda)maxlamda=fabs(LAMDA_[i][j][k][k]);
-				}
-			}
 
-		//U2G
-	for(i=0;i<=Nx+6;i++)      
-		for(j=0;j<=Ny+6;j++)
-			if(U[i][j][0]!=0) {
-				U2G(U[i][j],G[i][j]);
-
-	//计算Gpd
-				for(k=0;k<=3;k++)
-				{
-					Gp[i][j][k]=0.5*(G[i][j][k]+maxlamda*U[i][j][k]);
-					Gd[i][j][k]=0.5*(G[i][j][k]-maxlamda*U[i][j][k]);
-				}
-			}
-
-#endif
 }
 void ENO_y(double U[Nx+7][Ny+7][4],double G[Nx+7][Ny+7][4],double Gp[Nx+7][Ny+7][4],double Gd[Nx+7][Ny+7][4],
 		   double G_p[Nx+7][Ny+7][4],double G_d[Nx+7][Ny+7][4],double G_[Nx+7][Ny+7][4],
@@ -2072,8 +1814,6 @@ void ENO_y(double U[Nx+7][Ny+7][4],double G[Nx+7][Ny+7][4],double Gp[Nx+7][Ny+7]
 	double r;
 	dt=CFL(U,dx,dy,ENOCFL);
 	r=dt/dy;
-
-#ifndef ENO_FUSION
 	//计算q3pd q5pd
 	for(i=2;i<=Nx+3;i++)    
 		for(j=2;j<=Ny+3;j++)
@@ -2144,64 +1884,7 @@ void ENO_y(double U[Nx+7][Ny+7][4],double G[Nx+7][Ny+7][4],double Gp[Nx+7][Ny+7]
 		for(j=int(0.5/dy)+4;j<=Ny+3;j++)
 			for(k=0;k<=3;k++)
 				U[i][j][k]=U[i][j][k]-r*(G_[i][j][k]-G_[i][j-1][k]);
-#else	
-	//计算q3pd q5pd
-	for(i=2;i<=Nx+3;i++)    
-		for(j=2;j<=Ny+3;j++)
-			if(U[i][j][0]!=0)
-			{
-				for(k=0;k<=3;k++)
-				{
-					q3p[i][j][k][0]=1.0/3.0*Gp[i][j-2][k]-7.0/6.0*Gp[i][j-1][k]+11.0/6.0*Gp[i][j][k];
-					q3p[i][j][k][1]=-1.0/6.0*Gp[i][j-1][k]+5.0/6.0*Gp[i][j][k]+1.0/3.0*Gp[i][j+1][k];
-					q3p[i][j][k][2]=1.0/3.0*Gp[i][j][k]+5.0/6.0*Gp[i][j+1][k]-1.0/6.0*Gp[i][j+2][k];
-
-					q3d[i][j][k][0]=-1.0/6.0*Gd[i][j-1][k]+5.0/6.0*Gd[i][j][k]+1.0/3.0*Gd[i][j+1][k];
-					q3d[i][j][k][1]=1.0/3.0*Gd[i][j][k]+5.0/6.0*Gd[i][j+1][k]-1.0/6.0*Gd[i][j+2][k];
-					q3d[i][j][k][2]=11.0/6.0*Gd[i][j+1][k]-7.0/6.0*Gd[i][j+2][k]+1.0/3.0*Gd[i][j+3][k];
-			
-	//判断差商大小并且赋值
-					if(fabs(U[i][j+1][k]-U[i][j][k])>fabs(U[i][j][k]-U[i][j-1][k])&&fabs(U[i][j+1][k]-U[i][j][k])>fabs(U[i][j-1][k]-U[i][j-2][k]))
-						G_p[i][j][k]=q3p[i][j][k][0];
-					else 
-					{
-						if(fabs(U[i][j][k]-U[i][j-1][k])>fabs(U[i][j+1][k]-U[i][j][k])&&fabs(U[i][j][k]-U[i][j-1][k])>fabs(U[i][j+2][k]-U[i][j+1][k]))
-							G_p[i][j][k]=q3p[i][j][k][2];
-						else
-							G_p[i][j][k]=q3p[i][j][k][1];
-					}
-
-					if(fabs(U[i][j+2][k]-U[i][j+1][k])>fabs(U[i][j+1][k]-U[i][j][k])&&fabs(U[i][j+2][k]-U[i][j+1][k])>fabs(U[i][j][k]-U[i][j-1][k]))
-						G_d[i][j][k]=q3d[i][j][k][0];
-					else
-					{
-						if(fabs(U[i][j+1][k]-U[i][j][k])>fabs(U[i][j+2][k]-U[i][j+1][k])&&fabs(U[i][j+1][k]-U[i][j][k])>fabs(U[i][j+3][k]-U[i][j+2][k]))
-							G_d[i][j][k]=q3d[i][j][k][2];
-						else
-							G_d[i][j][k]=q3d[i][j][k][1];
-					}
-
-
-	//计算G_
-					G_[i][j][k]=G_p[i][j][k]+G_d[i][j][k];
-				}
-
-
-			}
-
-
-	//分区计算U
-	for(i=3;i<=Nx+3;i++)    
-		for(j=3;j<=int(0.5/dy)+3;j++)	
-			for(k=0;k<=3;k++)
-				U[i][j][k]=U[i][j][k]-r*(G_[i][j][k]-G_[i][j-1][k]);
-
-	for(i=int(1.0/dx)+3;i<=int(2.0/dx)+3;i++)    
-		for(j=int(0.5/dy)+4;j<=Ny+3;j++)
-			for(k=0;k<=3;k++)
-				U[i][j][k]=U[i][j][k]-r*(G_[i][j][k]-G_[i][j-1][k]);
-
-#endif
+	
 }
 
 void ENO_Solver(double U[Nx+7][Ny+7][4],double U1[Nx+7][Ny+7][4],double U2[Nx+7][Ny+7][4],
@@ -2214,11 +1897,7 @@ void ENO_Solver(double U[Nx+7][Ny+7][4],double U1[Nx+7][Ny+7][4],double U2[Nx+7]
 {
 	bound(U,dx,dy);
 	LF_x(U,LAMDA_,F,Fp,Fd);
-	gettimeofday(&ts, NULL);
 	ENO_x(U,F,Fp,Fd,F_p,F_d,F_,q3p,q3d,dx,dy,dt);
-	gettimeofday(&te, NULL);
-	double ms = get_elapsed_time_ms(ts, te);
-	cout << "first eno_x ms: " << ms << endl;
 	bound(U,dx,dy);
 	LF_y(U,LAMDA_,G,Gp,Gd);
 	ENO_y(U,G,Gp,Gd,G_p,G_d,G_,q3p,q3d,dx,dy,dt);
@@ -3052,7 +2731,7 @@ int Animation(double U[Nx+7][Ny+7][4],double dx,double dy,int n,int m,int method
 	else return 0;
 }
 
-int main(int argc, char** argv)
+int main()
 {
 	int m=0,n=0,method;      //n和m分别表示调用求解器的次数和输出plt文件的个数
 	double dx,dy,dt=0,T;
@@ -3085,7 +2764,6 @@ int main(int argc, char** argv)
 	}
 	if(method==2)
 	{
-		gettimeofday(&ts, NULL);
 		while(T<=TT)
 		{
 			dt=CFL(U,dx,dy,MUSCLCFL);
@@ -3094,9 +2772,6 @@ int main(int argc, char** argv)
 			n++;              
 			m+=Animation(U,dx,dy,n,m,method);	
 		}
-		gettimeofday(&te, NULL);
-		double ms = get_elapsed_time_ms(ts, te);
-		cout << "2 method ms: " << ms << endl;
 	}
 	if(method==3)
 	{
@@ -3133,28 +2808,18 @@ int main(int argc, char** argv)
 	}
 	if(method==6)
 	{
-		//gettimeofday(&ts, NULL);
 		while(T<=TT)
 		{
-			dt=CFL(U,dx,dy,ENOCFL);
-			//gettimeofday(&ts, NULL);
 			ENO_Solver(U,U1,U2,F,Fp,Fd,F_p,F_d,F_,G,Gp,Gd,F_p,F_d,F_,LAMDA_,q3p,q3d,dx,dy,dt);
-			//gettimeofday(&te, NULL);
-			//double ms = get_elapsed_time_ms(ts, te);
-			//cout << "ms: " << ms << "  dt: " << dt << "  T: " << T << endl;
 			T+=dt;
 			n++;              
 			m+=Animation(U,dx,dy,n,m,method);	
 		}
-		//gettimeofday(&te, NULL);
-		//double ms = get_elapsed_time_ms(ts, te);
-		//cout << "6 method ms: " << ms << endl;
 	}
 	if(method==7)
 	{
 		while(T<=TT)
 		{
-			dt=CFL(U,dx,dy,WENOCFL);
 			WENO_Solver(U,U1,U2,ISp,ISd,omegap,omegad,alphap,alphad,q3p,q3d,LAMDA_,Fp,Fd,F_p,F_d,F,F_,G,G_,Gp,Gd,G_p,G_d,dx,dy,dt);
 			T+=dt;
 			n++;              
@@ -3172,12 +2837,5 @@ int main(int argc, char** argv)
 			m+=Animation(U,dx,dy,n,m,method);	
 		}
 	}
-
-	if (argc == 2) {
-		// compare
-		cout << "check dat: " << argv[1] << endl;
-		compare(argv[1]);
-	}
-
-	return 0;
+	else cout<<"您的输入非法\n";
 }
