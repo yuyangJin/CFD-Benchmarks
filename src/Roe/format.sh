@@ -10,3 +10,4 @@ clang-format ${SCRIPT_DIR}/upwindtvd.cpp -i -style=file
 clang-format ${SCRIPT_DIR}/symtvd.cpp -i -style=file
 clang-format ${SCRIPT_DIR}/nnd.cpp -i -style=file
 clang-format ${SCRIPT_DIR}/weno.cpp -i -style=file
+clang-format ${SCRIPT_DIR}/compact.cpp -i -style=file

@@ -397,7 +397,6 @@ void WENO_x(double U[Nx + 7][Ny + 7][4], double ISp[Nx + 7][Ny + 7][4][3], doubl
           double ISd1 = 13.0 / 12.0 * isd1_l * isd1_l + 0.25 * isd1_r * isd1_r;
           double ISd2 = 13.0 / 12.0 * isd2_l * isd2_l + 0.25 * isd2_r * isd2_r;
 
-
           double local_alphap[3];
           double local_alphad[3];
           local_alphap[0] = 0.1 / pow(1e-16 + ISp0, P);
@@ -425,10 +424,8 @@ void WENO_x(double U[Nx + 7][Ny + 7][4], double ISp[Nx + 7][Ny + 7][4][3], doubl
           local_q3d[1] = 1.0 / 3.0 * Fd[i][j][k] + 5.0 / 6.0 * Fd[i + 1][j][k] - 1.0 / 6.0 * Fd[i + 2][j][k];
           local_q3d[2] = 11.0 / 6.0 * Fd[i + 1][j][k] - 7.0 / 6.0 * Fd[i + 2][j][k] + 1.0 / 3.0 * Fd[i + 3][j][k];
 
-
           double _F_p = 0;
           double _F_d = 0;
-
 
           for (l = 0; l <= 2; l++) {
             _F_p += local_omegap[l] * local_q3p[l];
@@ -512,7 +509,6 @@ void WENO_y(double U[Nx + 7][Ny + 7][4], double ISp[Nx + 7][Ny + 7][4][3], doubl
           local_q3d[1] = 1.0 / 3.0 * Gd[i][j][k] + 5.0 / 6.0 * Gd[i][j + 1][k] - 1.0 / 6.0 * Gd[i][j + 2][k];
           local_q3d[2] = 11.0 / 6.0 * Gd[i][j + 1][k] - 7.0 / 6.0 * Gd[i][j + 2][k] + 1.0 / 3.0 * Gd[i][j + 3][k];
 
-
           double _G_p = 0;
           double _G_d = 0;
           for (l = 0; l <= 2; l++) {
@@ -522,7 +518,6 @@ void WENO_y(double U[Nx + 7][Ny + 7][4], double ISp[Nx + 7][Ny + 7][4][3], doubl
 
           G_[i][j][k] = _G_p + _G_d;
         }
-
 
   //分区计算U
   for (i = 3; i <= Nx + 3; i++)

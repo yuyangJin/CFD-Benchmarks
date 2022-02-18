@@ -15,6 +15,7 @@
 #define SYMTVD_FUSION
 #define NND_FUSION
 #define WENO_FUSION
+#define COMPACT_FUSION
 
 #define GAMA 1.4
 #define PI 3.1415926
