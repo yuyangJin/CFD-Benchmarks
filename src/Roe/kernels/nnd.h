@@ -168,17 +168,17 @@ void U2FpFd(double U[4], double Fp[4], double Fd[4]) {
   a = sqrt(GAMA * p / rou);
   H = a * a / (GAMA - 1) + 0.5 * (u * u + v * v);
   lambda1 = u;
-  //lambda2 = u;
+  // lambda2 = u;
   lambda3 = u - a;
   lambda4 = u + a;
   //计算正特征值
   lambda1p = 0.5 * (fabs(lambda1) + lambda1);
-  //lambda2p = 0.5 * (fabs(lambda2) + lambda2);
+  // lambda2p = 0.5 * (fabs(lambda2) + lambda2);
   lambda3p = 0.5 * (fabs(lambda3) + lambda3);
   lambda4p = 0.5 * (fabs(lambda4) + lambda4);
   //特征值修正
   lambda1p = 0.5 * (lambda1p + sqrt(lambda1p * lambda1p + 1e-16));
-  //lambda2p = 0.5 * (lambda2p + sqrt(lambda2p * lambda2p + 1e-16));
+  // lambda2p = 0.5 * (lambda2p + sqrt(lambda2p * lambda2p + 1e-16));
   lambda3p = 0.5 * (lambda3p + sqrt(lambda3p * lambda3p + 1e-16));
   lambda4p = 0.5 * (lambda4p + sqrt(lambda4p * lambda4p + 1e-16));
   Fp[0] = rou / 2 / GAMA * (2 * (GAMA - 1) * lambda1p + lambda3p + lambda4p);
@@ -187,11 +187,11 @@ void U2FpFd(double U[4], double Fp[4], double Fd[4]) {
   Fp[3] = rou / 2 / GAMA * (2 * ((GAMA - 1) * H - a * a) * lambda1p + (H - a * u) * lambda3p + (H + a * u) * lambda4p);
   //现在就算Fd即F-
   lambda1d = -0.5 * (fabs(lambda1) - lambda1);
-  //lambda2d = -0.5 * (fabs(lambda2) - lambda2);
+  // lambda2d = -0.5 * (fabs(lambda2) - lambda2);
   lambda3d = -0.5 * (fabs(lambda3) - lambda3);
   lambda4d = -0.5 * (fabs(lambda4) - lambda4);
   lambda1d = 0.5 * (lambda1d - sqrt(lambda1d * lambda1d + 1e-16));
-  //lambda2d = 0.5 * (lambda2d - sqrt(lambda2d * lambda2d + 1e-16));
+  // lambda2d = 0.5 * (lambda2d - sqrt(lambda2d * lambda2d + 1e-16));
   lambda3d = 0.5 * (lambda3d - sqrt(lambda3d * lambda3d + 1e-16));
   lambda4d = 0.5 * (lambda4d - sqrt(lambda4d * lambda4d + 1e-16));
   Fd[0] = rou / 2 / GAMA * (2 * (GAMA - 1) * lambda1d + lambda3d + lambda4d);
@@ -210,15 +210,15 @@ void U2GpGd(double U[4], double Gp[4], double Gd[4]) {
   a = sqrt(GAMA * p / rou);
   H = a * a / (GAMA - 1) + 0.5 * (u * u + v * v);
   lambda1 = v;
-  //lambda2 = v;
+  // lambda2 = v;
   lambda3 = v - a;
   lambda4 = v + a;
   lambda1p = 0.5 * (fabs(lambda1) + lambda1);
-  //lambda2p = 0.5 * (fabs(lambda2) + lambda2);
+  // lambda2p = 0.5 * (fabs(lambda2) + lambda2);
   lambda3p = 0.5 * (fabs(lambda3) + lambda3);
   lambda4p = 0.5 * (fabs(lambda4) + lambda4);
   lambda1p = 0.5 * (lambda1p + sqrt(lambda1p * lambda1p + 1e-16));
-  //lambda2p = 0.5 * (lambda2p + sqrt(lambda2p * lambda2p + 1e-16));
+  // lambda2p = 0.5 * (lambda2p + sqrt(lambda2p * lambda2p + 1e-16));
   lambda3p = 0.5 * (lambda3p + sqrt(lambda3p * lambda3p + 1e-16));
   lambda4p = 0.5 * (lambda4p + sqrt(lambda4p * lambda4p + 1e-16));
   Gp[0] = rou / 2 / GAMA * (2 * (GAMA - 1) * lambda1p + lambda3p + lambda4p);
@@ -227,11 +227,11 @@ void U2GpGd(double U[4], double Gp[4], double Gd[4]) {
   Gp[3] = rou / 2 / GAMA * (2 * ((GAMA - 1) * H - a * a) * lambda1p + (H - a * v) * lambda3p + (H + a * v) * lambda4p);
   //计算Gd即G-的函数
   lambda1d = -0.5 * (fabs(lambda1) - lambda1);
-  //lambda2d = -0.5 * (fabs(lambda2) - lambda2);
+  // lambda2d = -0.5 * (fabs(lambda2) - lambda2);
   lambda3d = -0.5 * (fabs(lambda3) - lambda3);
   lambda4d = -0.5 * (fabs(lambda4) - lambda4);
   lambda1d = 0.5 * (lambda1d - sqrt(lambda1d * lambda1d + 1e-16));
-  //lambda2d = 0.5 * (lambda2d - sqrt(lambda2d * lambda2d + 1e-16));
+  // lambda2d = 0.5 * (lambda2d - sqrt(lambda2d * lambda2d + 1e-16));
   lambda3d = 0.5 * (lambda3d - sqrt(lambda3d * lambda3d + 1e-16));
   lambda4d = 0.5 * (lambda4d - sqrt(lambda4d * lambda4d + 1e-16));
   Gd[0] = rou / 2 / GAMA * (2 * (GAMA - 1) * lambda1d + lambda3d + lambda4d);
@@ -309,7 +309,6 @@ void NND_y(double U[Nx + 7][Ny + 7][4], double Gp[Nx + 7][Ny + 7][4], double Gd[
         }
 }
 
-
-#endif // NND_FUSION
+#endif  // NND_FUSION
 
 #endif
