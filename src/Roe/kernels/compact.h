@@ -71,7 +71,7 @@ void Compact_x(double U[Nx + 7][Ny + 7][4], double Ut[Nx + 7][Ny + 7][4], double
   for (i = 3; i <= Nx + 3; i++)
     for (j = 3; j <= int(0.5 / dy) + 3; j++) {
       q = fabs(fabs(U[i + 1][j][0] - U[i][j][0]) - fabs(U[i][j][0] - U[i - 1][j][0])) /
-          (fabs(U[i + 1][j][0] - U[i][j][0]) + fabs(U[i][j][0] - U[i - 1][j][0]) + pow(10, -100));
+          (fabs(U[i + 1][j][0] - U[i][j][0]) + fabs(U[i][j][0] - U[i - 1][j][0]) + 1e-100);
       for (k = 0; k <= 3; k++) {
         Ut[i][j][k] = U[i][j][k] + 0.5 * nu * q * (U[i + 1][j][k] - 2 * U[i][j][k] + U[i - 1][j][k]);
       }
@@ -476,7 +476,7 @@ void Compact_x(double U[Nx + 7][Ny + 7][4], double Ut[Nx + 7][Ny + 7][4], double
   for (i = 3; i <= Nx + 3; i++)
     for (j = 3; j <= int(0.5 / dy) + 3; j++) {
       q = fabs(fabs(U[i + 1][j][0] - U[i][j][0]) - fabs(U[i][j][0] - U[i - 1][j][0])) /
-          (fabs(U[i + 1][j][0] - U[i][j][0]) + fabs(U[i][j][0] - U[i - 1][j][0]) + pow(10, -100));
+          (fabs(U[i + 1][j][0] - U[i][j][0]) + fabs(U[i][j][0] - U[i - 1][j][0]) + 1e-100);
       for (k = 0; k <= 3; k++) {
         Ut[i][j][k] = U[i][j][k] + 0.5 * nu * q * (U[i + 1][j][k] - 2 * U[i][j][k] + U[i - 1][j][k]);
       }
