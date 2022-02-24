@@ -354,12 +354,18 @@ void virtual_clear(double U[Nx + 7][Ny + 7][4], double dx, double dy) {
 struct timer {
   std::unordered_map<const char*, double> elapsed_time_ms;
   std::unordered_map<const char*, int> count;
-  timeval s, e;
+  std::unordered_map<const char*, timeval> time_point;
 
-  void start(const char* func) { gettimeofday(&s, NULL); }
+  void start(const char* func) {
+    timeval s;
+    gettimeofday(&s, NULL);
+    time_point[func] = s;
+  }
   void stop(const char* func) {
+    timeval e;
     gettimeofday(&e, NULL);
     count[func]++;
+    timeval s = time_point[func];
     elapsed_time_ms[func] += get_elapsed_time_ms(s, e);
   }
   void show_all() {
