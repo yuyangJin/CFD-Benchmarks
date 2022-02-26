@@ -264,6 +264,99 @@ void LF_x(double*** U, double**** LAMDA_, double*** F, double*** Fp, double*** F
       }
 }
 
+__global__ void eno_x_cuda(double* U, double* F, double* Fp, double* Fd, double* F_p, double* F_d, double* F_,
+                           double* q3p, double* q3d, double dx, double dy, double dt, int offset1, int offset2) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x + 2;
+  int j = blockIdx.y * blockDim.y + threadIdx.y + 2;
+
+  // for (i = 2; i <= Nx + 3; i++)
+  //   for (j = 2; j <= Ny + 3; j++)
+  if (i >= Nx + 2 || j >= Ny + 2) return;
+  if (1)
+    // if (U[i * offset1 + j * offset2] != 0)
+    for (int k = 0; k <= 3; k++) {
+      //判断差商大小并且赋值
+      if (fabs(U[(i + 1) * offset1 + j * offset2 + k] - U[i * offset1 + j * offset2 + k]) >
+              fabs(U[i * offset1 + j * offset2 + k] - U[(i - 1) * offset1 + j * offset2 + k]) &&
+          fabs(U[(i + 1) * offset1 + j * offset2 + k] - U[i * offset1 + j * offset2 + k]) >
+              fabs(U[(i - 1) * offset1 + j * offset2 + k] - U[(i - 2) * offset1 + j * offset2 + k]))
+        // F_p[i*offset1 + j*offset2 + k] = q3p[i*offset1*3 + j*offset2*3 + k*3+0];
+        F_p[i * offset1 + j * offset2 + k] = 1.0 / 3.0 * Fp[(i - 2) * offset1 + j * offset2 + k] -
+                                             7.0 / 6.0 * Fp[(i - 1) * offset1 + j * offset2 + k] +
+                                             11.0 / 6.0 * Fp[i * offset1 + j * offset2 + k];
+      else {
+        if (fabs(U[i * offset1 + j * offset2 + k] - U[(i - 1) * offset1 + j * offset2 + k]) >
+                fabs(U[(i + 1) * offset1 + j * offset2 + k] - U[i * offset1 + j * offset2 + k]) &&
+            fabs(U[i * offset1 + j * offset2 + k] - U[(i - 1) * offset1 + j * offset2 + k]) >
+                fabs(U[(i + 2) * offset1 + j * offset2 + k] - U[(i + 1) * offset1 + j * offset2 + k]))
+          // F_p[i*offset1 + j*offset2 + k] = q3p[i*offset1*3 + j*offset2*3 + k*3+2];
+          F_p[i * offset1 + j * offset2 + k] = 1.0 / 3.0 * Fp[i * offset1 + j * offset2 + k] +
+                                               5.0 / 6.0 * Fp[(i + 1) * offset1 + j * offset2 + k] -
+                                               1.0 / 6.0 * Fp[(i + 2) * offset1 + j * offset2 + k];
+        else
+          // F_p[i*offset1 + j*offset2 + k] = q3p[i*offset1*3 + j*offset2*3 + k*3+1];
+          F_p[i * offset1 + j * offset2 + k] = -1.0 / 6.0 * Fp[(i - 1) * offset1 + j * offset2 + k] +
+                                               5.0 / 6.0 * Fp[i * offset1 + j * offset2 + k] +
+                                               1.0 / 3.0 * Fp[(i + 1) * offset1 + j * offset2 + k];
+      }
+      if (fabs(U[(i + 2) * offset1 + j * offset2 + k] - U[(i + 1) * offset1 + j * offset2 + k]) >
+              fabs(U[(i + 1) * offset1 + j * offset2 + k] - U[i * offset1 + j * offset2 + k]) &&
+          fabs(U[(i + 2) * offset1 + j * offset2 + k] - U[(i + 1) * offset1 + j * offset2 + k]) >
+              fabs(U[i * offset1 + j * offset2 + k] - U[(i - 1) * offset1 + j * offset2 + k]))
+        // F_d[i*offset1 + j*offset2 + k] = q3d[i*offset1*3 + j*offset2*3 + k*3+0];
+        F_d[i * offset1 + j * offset2 + k] = -1.0 / 6.0 * Fd[(i - 1) * offset1 + j * offset2 + k] +
+                                             5.0 / 6.0 * Fd[i * offset1 + j * offset2 + k] +
+                                             1.0 / 3.0 * Fd[(i + 1) * offset1 + j * offset2 + k];
+      else {
+        if (fabs(U[(i + 1) * offset1 + j * offset2 + k] - U[i * offset1 + j * offset2 + k]) >
+                fabs(U[(i + 2) * offset1 + j * offset2 + k] - U[(i + 1) * offset1 + j * offset2 + k]) &&
+            fabs(U[(i + 1) * offset1 + j * offset2 + k] - U[i * offset1 + j * offset2 + k]) >
+                fabs(U[(i + 3) * offset1 + j * offset2 + k] - U[(i + 2) * offset1 + j * offset2 + k]))
+          // F_d[i*offset1 + j*offset2 + k] = q3d[i*offset1*3 + j*offset2*3 + k*3+2];
+          F_d[i * offset1 + j * offset2 + k] = 11.0 / 6.0 * Fd[(i + 1) * offset1 + j * offset2 + k] -
+                                               7.0 / 6.0 * Fd[(i + 2) * offset1 + j * offset2 + k] +
+                                               1.0 / 3.0 * Fd[(i + 3) * offset1 + j * offset2 + k];
+        else
+          // F_d[i*offset1 + j*offset2 + k] = q3d[i*offset1*3 + j*offset2*3 + k*3+1];
+          F_d[i * offset1 + j * offset2 + k] = 1.0 / 3.0 * Fd[i * offset1 + j * offset2 + k] +
+                                               5.0 / 6.0 * Fd[(i + 1) * offset1 + j * offset2 + k] -
+                                               1.0 / 6.0 * Fd[(i + 2) * offset1 + j * offset2 + k];
+      }
+
+      // 计算F_
+      F_[i * offset1 + j * offset2 + k] = F_p[i * offset1 + j * offset2 + k] + F_d[i * offset1 + j * offset2 + k];
+    }
+}
+
+// for (i = 3; i <= Nx + 3; i++)
+//   for (j = 3; j <= int(0.5 / dy) + 3; j++)
+//     for (k = 0; k <= 3; k++) U[i][j][k] = U[i][j][k] - r * (F_[i][j][k] - F_[i - 1][j][k]);
+
+// for (i = int(1.0 / dx) + 3; i <= int(2.0 / dx) + 3; i++)
+//   for (j = int(0.5 / dy) + 4; j <= Ny + 3; j++)
+//     for (k = 0; k <= 3; k++) U[i][j][k] = U[i][j][k] - r * (F_[i][j][k] - F_[i - 1][j][k]);
+
+__global__ void eno_x_cuda_2(double* U, double* F_, double dy, double r, int offset1, int offset2) {
+  // for (i = 3; i <= Nx + 3; i++)
+  //   for (j = 3; j <= int(0.5 / dy) + 3; j++)
+  int i = blockIdx.x * blockDim.x + threadIdx.x + 3;
+  int j = blockIdx.y * blockDim.y + threadIdx.y + 3;
+  if (i > Nx + 3 || j > int(0.5 / dy) + 3) return;
+  for (int k = 0; k <= 3; k++)
+    U[i * offset1 + j * offset2 + k] = U[i * offset1 + j * offset2 + k] - r * (F_[i * offset1 + j * offset2 + k] -
+                                                                               F_[(i - 1) * offset1 + j * offset2 + k]);
+}
+
+__global__ void eno_x_cuda_3(double* U, double* F_, double dx, double dy, double r, int offset1, int offset2) {
+  // for (i = 3; i <= Nx + 3; i++)
+  //   for (j = 3; j <= int(0.5 / dy) + 3; j++)
+  int i = blockIdx.x * blockDim.x + threadIdx.x + 3 + int(1.f / dx);
+  int j = blockIdx.y * blockDim.y + threadIdx.y + 4 + int(0.5 / dy);
+  if (i > int(2.0 / dx) + 3 || j > Ny + 3) return;
+  for (int k = 0; k <= 3; k++)
+    U[i * offset1 + j * offset2 + k] = U[i * offset1 + j * offset2 + k] - r * (F_[i * offset1 + j * offset2 + k] -
+                                                                               F_[(i - 1) * offset1 + j * offset2 + k]);
+}
 //此函数将之前计算的特征之余特征向量通过TVD算法计算U
 void ENO_x(double*** U, double*** F, double*** Fp, double*** Fd, double*** F_p, double*** F_d, double*** F_,
            double**** q3p, double**** q3d, double dx, double dy, double dt) {

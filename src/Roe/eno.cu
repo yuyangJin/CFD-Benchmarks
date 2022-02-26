@@ -2,10 +2,18 @@
 #include <vector>
 using std::vector;
 
-#include "eno.h"
+#include "eno.cuh"
 #include "util.cuh"
 
+dim3 grid, block;
+dim3 grid2, block2;
+dim3 grid3, block3;
+const int block_size = 32;
 timer func_timer;
+
+int offset1 = (Ny + 7) * 4;
+int offset2 = 4;
+double *U_cuda, *F_cuda, *Fp_cuda, *Fd_cuda, *F_p_cuda, *F_d_cuda, *F__cuda, *q3p_cuda, *q3d_cuda;
 void ENO_Solver(double ***U, double ***U1, double ***U2, double ***F, double ***Fp, double ***Fd, double ***F_p,
                 double ***F_d, double ***F_, double ***G, double ***Gp, double ***Gd, double ***G_p, double ***G_d,
                 double ***G_, double ****LAMDA_, double ****q3p, double ****q3d, double dx, double dy, double &dt) {
@@ -14,6 +22,23 @@ void ENO_Solver(double ***U, double ***U1, double ***U2, double ***F, double ***
   func_timer.start("ENO_x");
   ENO_x(U, F, Fp, Fd, F_p, F_d, F_, q3p, q3d, dx, dy, dt);
   func_timer.stop("ENO_x");
+
+  func_timer.start("ENO_x_cuda");
+  eno_x_cuda<<<grid, block>>>(U_cuda, F_cuda, Fp_cuda, Fd_cuda, F_p_cuda, F_d_cuda, F__cuda, q3p_cuda, q3d_cuda, dx, dy,
+                              dt, offset1, offset2);
+
+  // __global__ void eno_x_cuda_2(double* U, double* F_, double dy, double r, int offset1, int offset2) {
+  grid2.x = (Nx + 1 + 31) / 32;
+  grid2.y = (int(0.5 / dy) + 1 + 31) / 32;
+  eno_x_cuda_2<<<grid, block>>>(U_cuda, F_cuda, dy, 1.f, offset1, offset2);
+
+  // __global__ void eno_x_cuda_3(double* U, double* F_, double dx, double dy, double r, int offset1, int offset2) {
+  grid3.x = ((2.0 / dx - 1.0 / dx) + 1 + 31) / 32;
+  grid3.y = (Ny - int(0.5 / dy) + 1 + 31) / 32;
+  eno_x_cuda_3<<<grid, block>>>(U_cuda, F_cuda, dx, dy, 1.f, offset1, offset2);
+  cudaDeviceSynchronize();
+  func_timer.stop("ENO_x_cuda");
+
   bound(U, dx, dy);
   LF_y(U, LAMDA_, G, Gp, Gd);
   ENO_y(U, G, Gp, Gd, G_p, G_d, G_, q3p, q3d, dx, dy, dt);
@@ -47,9 +72,13 @@ int main(int argc, char **argv) {
   double dx, dy, dt = 0, T = 0;
 
   vector<int> shape1 = {Nx + 7, Ny + 7, 4};
+  int shape1_ = (Nx + 7) * (Ny + 7) * 4;
   vector<int> shape2 = {Nx + 7, Ny + 7, 4, 4};
+  int shape2_ = (Nx + 7) * (Ny + 7) * 4 * 4;
   vector<int> shape3 = {Nx + 7, Ny + 7, 4, 3};
+  int shape3_ = (Nx + 7) * (Ny + 7) * 4 * 3;
   vector<int> shape4 = {Nx + 7, Ny + 7, 1};
+  int shape4_ = (Nx + 7) * (Ny + 7) * 1;
 
   double ***U = (double ***)alloc_nd(shape1);
   double ***U_ = (double ***)alloc_nd(shape1);
@@ -78,22 +107,45 @@ int main(int argc, char **argv) {
 
   double ***a_ = (double ***)alloc_nd(shape4);
 
-  initial(U, dx, dy);
+  cudaMalloc((void **)&U_cuda, shape1_ * sizeof(double));
+  cudaMalloc((void **)&F_cuda, shape1_ * sizeof(double));
+  cudaMalloc((void **)&Fp_cuda, shape1_ * sizeof(double));
+  cudaMalloc((void **)&Fd_cuda, shape1_ * sizeof(double));
+  cudaMalloc((void **)&F_p_cuda, shape1_ * sizeof(double));
+  cudaMalloc((void **)&F_d_cuda, shape1_ * sizeof(double));
+  cudaMalloc((void **)&F__cuda, shape1_ * sizeof(double));
+  cudaMalloc((void **)&q3p_cuda, shape3_ * sizeof(double));
+  cudaMalloc((void **)&q3d_cuda, shape3_ * sizeof(double));
 
-  int n = 0;
-  timeval s, e;
-  gettimeofday(&s, NULL);
-  while (T <= TT) {
-    dt = CFL(U, dx, dy, ENOCFL);
-    ENO_Solver(U, U1, U2, F, Fp, Fd, F_p, F_d, F_, G, Gp, Gd, F_p, F_d, F_, LAMDA_, q3p, q3d, dx, dy, dt);
-    T += dt;
-    n++;
-    virtual_clear(U, dx, dy);
+  const int blocksize = 32;
+  grid.x = (Nx + 2 + 31) / blocksize;
+  grid.y = (Ny + 2 + 31) / blocksize;
+  block.x = blocksize;
+  block.y = blocksize;
+  block2.x = blocksize;
+  block2.y = blocksize;
+  block3.x = blocksize;
+  block3.y = blocksize;
+
+  // int shape1_ = (Nx + 7) * (Ny + 7) * 4;
+
+  for (int iter = 0; iter < 10; ++iter) {
+    initial(U, dx, dy);
+    int n = 0;
+    timeval s, e;
+    gettimeofday(&s, NULL);
+    while (T <= TT) {
+      dt = CFL(U, dx, dy, ENOCFL);
+      ENO_Solver(U, U1, U2, F, Fp, Fd, F_p, F_d, F_, G, Gp, Gd, F_p, F_d, F_, LAMDA_, q3p, q3d, dx, dy, dt);
+      T += dt;
+      n++;
+      virtual_clear(U, dx, dy);
+    }
+    gettimeofday(&e, NULL);
+    double ms = get_elapsed_time_ms(s, e);
+    printf("ENO total time: %lf ms\n", ms);
+    printf("ENO iter: %d\n", n);
   }
-  gettimeofday(&e, NULL);
-  double ms = get_elapsed_time_ms(s, e);
-  printf("ENO total time: %lf ms\n", ms);
-  printf("ENO iter: %d\n", n);
 
   func_timer.show_all();
 
