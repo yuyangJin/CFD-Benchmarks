@@ -4,7 +4,7 @@ using std::vector;
 
 #include "eno.cuh"
 #include "util.cuh"
-// #define CUDAV2
+#define CUDAV2
 
 dim3 grid, block;
 dim3 grid2, block2;
@@ -18,7 +18,7 @@ const int blocksize_Y = 32;
 
 timer func_timer;
 
-int offset1 = (Ny + 7) * 4;
+int offset1 = (Ny_new + 7) * 4;
 int offset2 = 4;
 double *U_cuda, *F_cuda, *Fp_cuda, *Fd_cuda, *F_p_cuda, *F_d_cuda, *F__cuda, *q3p_cuda, *q3d_cuda;
 void ENO_Solver(Tensor &U, Tensor &U1, Tensor &U2, Tensor &F, Tensor &Fp, Tensor &Fd, Tensor &F_p, Tensor &F_d,
@@ -33,28 +33,28 @@ void ENO_Solver(Tensor &U, Tensor &U1, Tensor &U2, Tensor &F, Tensor &Fp, Tensor
   func_timer.start("ENO_x_cuda");
 #ifdef CUDAV2
   eno_x_cuda_v2<<<grid, block>>>(U_cuda, F_cuda, Fp_cuda, Fd_cuda, F_p_cuda, F_d_cuda, F__cuda, q3p_cuda, q3d_cuda, dx,
-                                 dy, dt, offset1, offset2);
+                                 dy, dt, offset1, offset2, Nx_new, Ny_new);
 #else
   eno_x_cuda<<<grid, block>>>(U_cuda, F_cuda, Fp_cuda, Fd_cuda, F_p_cuda, F_d_cuda, F__cuda, q3p_cuda, q3d_cuda, dx, dy,
-                              dt, offset1, offset2);
+                              dt, offset1, offset2, Nx_new, Ny_new);
 #endif
 
   // __global__ void eno_x_cuda_2(double* U, double* F_, double dy, double r, int offset1, int offset2) {
-  grid2.x = (Nx + 1 + blocksize - 1) / blocksize;
+  grid2.x = (Nx_new + 1 + blocksize - 1) / blocksize;
   grid2.y = (int(0.5 / dy) + 1 + blocksize_Y - 1) / blocksize_Y;
 #ifdef CUDAV2
-  eno_x_cuda_2_v2<<<grid2, block2>>>(U_cuda, F_cuda, dy, 1.f, offset1, offset2);
+  eno_x_cuda_2_v2<<<grid2, block2>>>(U_cuda, F_cuda, dy, 1.f, offset1, offset2, Nx_new, Ny_new);
 #else
-  eno_x_cuda_2<<<grid2, block2>>>(U_cuda, F_cuda, dy, 1.f, offset1, offset2);
+  eno_x_cuda_2<<<grid2, block2>>>(U_cuda, F_cuda, dy, 1.f, offset1, offset2, Nx_new, Ny_new);
 #endif
 
   // __global__ void eno_x_cuda_3(double* U, double* F_, double dx, double dy, double r, int offset1, int offset2) {
   grid3.x = ((2.0 / dx - 1.0 / dx) + 1 + blocksize - 1) / blocksize;
-  grid3.y = (Ny - int(0.5 / dy) + 1 + blocksize_Y - 1) / blocksize_Y;
+  grid3.y = (Ny_new - int(0.5 / dy) + 1 + blocksize_Y - 1) / blocksize_Y;
 #ifdef CUDAV2
-  eno_x_cuda_3_v2<<<grid3, block3>>>(U_cuda, F_cuda, dx, dy, 1.f, offset1, offset2);
+  eno_x_cuda_3_v2<<<grid3, block3>>>(U_cuda, F_cuda, dx, dy, 1.f, offset1, offset2, Nx_new, Ny_new);
 #else
-  eno_x_cuda_3<<<grid3, block3>>>(U_cuda, F_cuda, dx, dy, 1.f, offset1, offset2);
+  eno_x_cuda_3<<<grid3, block3>>>(U_cuda, F_cuda, dx, dy, 1.f, offset1, offset2, Nx_new, Ny_new);
 #endif
   cudaDeviceSynchronize();
   func_timer.stop("ENO_x_cuda");
@@ -91,16 +91,19 @@ double *alloc_nd(const vector<int> &dims) {
 }
 
 int main(int argc, char **argv) {
+  Nx_new = atoi(argv[1]);
+  Ny_new = atoi(argv[2]);
+  printf("Nx_new = %d Ny_new = %d\n", Nx_new, Ny_new);
   double dx, dy, dt = 0, T = 0;
 
-  vector<int> shape1 = {Nx + 7, Ny + 7, 4};
-  int shape1_ = (Nx + 7) * (Ny + 7) * 4;
-  vector<int> shape2 = {Nx + 7, Ny + 7, 4, 4};
-  int shape2_ = (Nx + 7) * (Ny + 7) * 4 * 4;
-  vector<int> shape3 = {Nx + 7, Ny + 7, 4, 3};
-  int shape3_ = (Nx + 7) * (Ny + 7) * 4 * 3;
-  vector<int> shape4 = {Nx + 7, Ny + 7, 1};
-  int shape4_ = (Nx + 7) * (Ny + 7) * 1;
+  vector<int> shape1 = {Nx_new + 7, Ny_new + 7, 4};
+  int shape1_ = (Nx_new + 7) * (Ny_new + 7) * 4;
+  vector<int> shape2 = {Nx_new + 7, Ny_new + 7, 4, 4};
+  int shape2_ = (Nx_new + 7) * (Ny_new + 7) * 4 * 4;
+  vector<int> shape3 = {Nx_new + 7, Ny_new + 7, 4, 3};
+  int shape3_ = (Nx_new + 7) * (Ny_new + 7) * 4 * 3;
+  vector<int> shape4 = {Nx_new + 7, Ny_new + 7, 1};
+  int shape4_ = (Nx_new + 7) * (Ny_new + 7) * 1;
 
   Tensor U(shape1, shape1_);
   Tensor U_(shape1, shape1_);
@@ -162,8 +165,8 @@ int main(int argc, char **argv) {
   cudaMalloc((void **)&q3p_cuda, shape3_ * sizeof(double));
   cudaMalloc((void **)&q3d_cuda, shape3_ * sizeof(double));
 
-  grid.x = (Nx + 2 + blocksize - 1) / blocksize;
-  grid.y = (Ny + 2 + blocksize_Y - 1) / blocksize_Y;
+  grid.x = (Nx_new + 2 + blocksize - 1) / blocksize;
+  grid.y = (Ny_new + 2 + blocksize_Y - 1) / blocksize_Y;
   block.x = blocksize;
   block.y = blocksize_Y;
   block2.x = blocksize;
@@ -176,13 +179,13 @@ int main(int argc, char **argv) {
   block3.z = 3;
 #endif
 
-  // int shape1_ = (Nx + 7) * (Ny + 7) * 4;
+  // int shape1_ = (Nx_new + 7) * (Ny_new + 7) * 4;
 
   initial_Tensor(U, dx, dy);
   int n = 0;
   timeval s, e;
   gettimeofday(&s, NULL);
-  while (T <= TT) {
+  while (T <= TT && n < 100) {
     dt = CFL_Tensor(U, dx, dy, ENOCFL);
     ENO_Solver(U, U1, U2, F, Fp, Fd, F_p, F_d, F_, G, Gp, Gd, F_p, F_d, F_, LAMDA_, q3p, q3d, dx, dy, dt);
     T += dt;
