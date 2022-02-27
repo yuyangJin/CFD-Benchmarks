@@ -8,6 +8,8 @@
 #include <cstdlib>
 #include <fstream>
 #include <unordered_map>
+#include <vector>
+using std::vector;
 
 #define ENO_FUSION
 #define MUSCL_FUSION
@@ -40,6 +42,31 @@
 
 #define get_elapsed_time_ms(_s, _e) (1000.0 * (_e.tv_sec - _s.tv_sec) + (_e.tv_usec - _s.tv_usec) / 1000.0)
 
+class Tensor {
+ public:
+  vector<int> shape_;
+  int shape_size_;
+  vector<int> offset_;
+  double* ptr_;
+  double* cuda_ptr_;
+  Tensor(const vector<int>& shape, int shape_size) : shape_(shape), shape_size_(shape_size) {
+    for (int i = 1; i < shape_.size(); ++i) {
+      int base = shape_[i];
+      for (int j = i + 1; j < shape_.size(); ++j) base *= shape_[j];
+      offset_.push_back(base);
+    }
+    for (auto& item : offset_) {
+      printf("%d ", item);
+    }
+    printf("\n");
+    ptr_ = new double[shape_size];
+    cuda_ptr_ = new double[shape_size];
+  }
+  inline double* indexing(int i, int j) { return ptr_ + i * offset_[0] + j * offset_[1]; }
+  inline double& indexing(int i, int j, int k) { return ptr_[i * offset_[0] + j * offset_[1]]; }
+  inline double& indexing(int i, int j, int k, int f) { return ptr_[i * offset_[0] + j * offset_[1] + k * offset_[2]]; }
+};
+
 void save(const char* fn, double*** U) {
   std::ofstream out;
   out.open(fn, std::ofstream::binary);
@@ -58,6 +85,26 @@ void check(const char* fn, double*** U) {
       for (int k = 0; k < 4; ++k) {
         if (fabs(U_dat[i][j][k] - U[i][j][k]) >= 1e-6) {
           printf("CHECK FAILED (%lf != %lf)\n", U_dat[i][j][k], U[i][j][k]);
+          return;
+        }
+      }
+    }
+  }
+  printf("CHECK PASS\n");
+}
+
+void check_Tensor(const char* fn, Tensor& U) {
+  // double U_dat[Nx + 7][Ny + 7][4];
+  Tensor U_dat({Nx + 7, Ny + 7, 4}, (Nx + 7) * (Ny + 7) * 4);
+  std::ifstream in;
+  in.open(fn, std::ifstream::binary);
+  in.read((char*)U_dat.ptr_, sizeof(double) * (Nx + 7) * (Ny + 7) * 4);
+  in.close();
+  for (int i = 0; i < Nx + 7; ++i) {
+    for (int j = 0; j < Ny + 7; ++j) {
+      for (int k = 0; k < 4; ++k) {
+        if (fabs(U_dat.indexing(i, j, k) - U.indexing(i, j, k)) >= 1e-6) {
+          printf("CHECK FAILED (%lf != %lf)\n", U_dat.indexing(i, j, k) - U.indexing(i, j, k));
           return;
         }
       }
@@ -98,6 +145,36 @@ void initial(double*** U, double& dx, double& dy) {
     }
 }
 
+void initial_Tensor(Tensor& U, double& dx, double& dy) {
+  int i, j;
+  dx = Lx / Nx;
+  dy = Ly / Ny;
+  double rou1 = 1, u1 = 0, v1 = 0, a1 = 1, p1 = 0.71429;
+  double rou2 = 3.85714, p2 = 7.381, u2 = 2.22223, v2 = 0;
+  for (i = 0; i <= Nx + 6; i++)  //初始条件  这里先把所有区域都赋值u1 v1 p1 rou1
+    for (j = 0; j <= Ny + 6; j++) {
+      U.indexing(i, j, 0) = rou1;
+      U.indexing(i, j, 1) = rou1 * u1;
+      U.indexing(i, j, 2) = rou1 * v1;
+      U.indexing(i, j, 3) = p1 / (GAMA - 1) + 0.5 * rou1 * (u1 * u1 + v1 * v1);
+    }
+  //边界以外赋零
+  for (i = 0; i <= int(1.0 / dx) - 1; i++)
+    for (j = int(0.5 / dy) + 7; j <= Ny + 6; j++) {
+      U.indexing(i, j, 0) = 0;
+      U.indexing(i, j, 1) = 0;
+      U.indexing(i, j, 2) = 0;
+      U.indexing(i, j, 3) = 0;
+    }
+  for (i = int(2.0 / dx) + 7; i <= Nx + 6; i++)
+    for (j = int(0.5 / dy) + 7; j <= Ny + 6; j++) {
+      U.indexing(i, j, 0) = 0;
+      U.indexing(i, j, 1) = 0;
+      U.indexing(i, j, 2) = 0;
+      U.indexing(i, j, 3) = 0;
+    }
+}
+
 // CFL稳定性条件
 //入口:U(没有进行过Roe平均的U向量)
 //出口:dt
@@ -112,6 +189,26 @@ double CFL(double*** U, double dx, double dy, double cfl) {
         u = U[i][j][1] / U[i][j][0];
         v = U[i][j][2] / U[i][j][0];
         p = (GAMA - 1) * (U[i][j][3] - 0.5 * rou * (u * u + v * v));
+        a = sqrt(p * GAMA / rou);
+        vel = a + fabs(u);
+        if (vel >= maxvel) maxvel = vel;
+        vel = a + fabs(v);
+        if (vel >= maxvel) maxvel = vel;
+      }
+  return cfl * MIN(dx, dy) / maxvel;
+}
+
+double CFL_Tensor(Tensor& U, double dx, double dy, double cfl) {
+  int i, j;
+  double u, v, rou, a, vel, maxvel, p;
+  maxvel = 1e-100;
+  for (i = 0; i <= Nx + 6; i++)
+    for (j = 0; j <= Ny + 6; j++)
+      if (U.indexing(i, j, 0) != 0) {
+        rou = U.indexing(i, j, 0);
+        u = U.indexing(i, j, 1) / U.indexing(i, j, 0);
+        v = U.indexing(i, j, 2) / U.indexing(i, j, 0);
+        p = (GAMA - 1) * (U.indexing(i, j, 3) - 0.5 * rou * (u * u + v * v));
         a = sqrt(p * GAMA / rou);
         vel = a + fabs(u);
         if (vel >= maxvel) maxvel = vel;
@@ -265,6 +362,126 @@ void bound(double*** U, double dx, double dy) {
     U[int(2.0 / dx) + 3][j][1] = 0;
   }
 }
+void bound_Tensor(Tensor& U, double dx, double dy) {
+  int i, j, k;
+  double rou1 = 1, u1 = 0, v1 = 0, a1 = 1, p1 = 0.71429;
+  double rou2 = 3.85714, p2 = 7.381, u2 = 2.22223, v2 = 0;
+  for (i = 0; i <= 2; i++)  //左边界条件
+    for (j = 0; j <= int(0.5 / dy) + 6; j++) {
+      U.indexing(i, j, 0) = rou2;
+      U.indexing(i, j, 1) = rou2 * u2;
+      U.indexing(i, j, 2) = rou2 * v2;
+      U.indexing(i, j, 3) = p2 / (GAMA - 1) + 0.5 * rou2 * (u2 * u2 + v2 * v2);
+    }
+  for (i = Nx + 4; i <= Nx + 6; i++)  //右边界条件
+    for (j = 0; j <= int(0.5 / dy) + 6; j++) {
+      U.indexing(i, j, 0) = U.indexing(i - 1, j, 0);
+      U.indexing(i, j, 1) = U.indexing(i - 1, j, 1);
+      U.indexing(i, j, 2) = U.indexing(i - 1, j, 2);
+      U.indexing(i, j, 3) = U.indexing(i - 1, j, 3);
+    }
+  for (i = 3; i <= Nx + 3; i++)  //虚拟节点的处理,这里采用镜面反射,标量和切向速度取相同值,法相速度取相反值
+    for (j = 0; j <= 2; j++) {
+      U.indexing(i, j, 0) = U.indexing(i, 6 - j, 0);
+      U.indexing(i, j, 1) = U.indexing(i, 6 - j, 1);
+      U.indexing(i, j, 2) = -U.indexing(i, 6 - j, 2);
+      U.indexing(i, j, 3) = U.indexing(i, 6 - j, 3);
+    }
+  for (i = 3; i <= int(1.0 / dx) + 2; i++)
+    for (j = int(0.5 / dy) + 4; j <= int(0.5 / dy) + 6; j++) {
+      U.indexing(i, j, 0) = U.indexing(i, -j + 2 * int(0.5 / dy) + 6, 0);
+      U.indexing(i, j, 1) = U.indexing(i, -j + 2 * int(0.5 / dy) + 6, 1);
+      U.indexing(i, j, 2) = -U.indexing(i, -j + 2 * int(0.5 / dy) + 6, 2);
+      U.indexing(i, j, 3) = U.indexing(i, -j + 2 * int(0.5 / dy) + 6, 3);
+    }
+  for (i = int(1.0 / dx); i <= int(2.0 / dx) + 6; i++)
+    for (j = Ny + 4; j <= Ny + 6; j++) {
+      U.indexing(i, j, 0) = U.indexing(i, -j + 2 * int(1.0 / dy) + 6, 0);
+      U.indexing(i, j, 1) = U.indexing(i, -j + 2 * int(1.0 / dy) + 6, 1);
+      U.indexing(i, j, 2) = -U.indexing(i, -j + 2 * int(1.0 / dy) + 6, 2);
+      U.indexing(i, j, 3) = U.indexing(i, -j + 2 * int(1.0 / dy) + 6, 3);
+    }
+  for (i = int(2.0 / dx) + 4; i <= Nx + 3; i++)
+    for (j = int(0.5 / dy) + 4; j <= int(0.5 / dy) + 6; j++) {
+      U.indexing(i, j, 0) = U.indexing(i, -j + 2 * int(0.5 / dy) + 6, 0);
+      U.indexing(i, j, 1) = U.indexing(i, -j + 2 * int(0.5 / dy) + 6, 1);
+      U.indexing(i, j, 2) = -U.indexing(i, -j + 2 * int(0.5 / dy) + 6, 2);
+      U.indexing(i, j, 3) = U.indexing(i, -j + 2 * int(0.5 / dy) + 6, 3);
+    }
+  for (i = int(1.0 / dx); i <= int(1.0 / dx) + 2; i++)
+    for (j = int(0.5 / dy) + 4; j <= Ny + 6; j++) {
+      U.indexing(i, j, 0) = U.indexing(2 * int(1.0 / dx) + 6 - i, j, 0);
+      U.indexing(i, j, 1) = -U.indexing(2 * int(1.0 / dx) + 6 - i, j, 1);
+      U.indexing(i, j, 2) = U.indexing(2 * int(1.0 / dx) + 6 - i, j, 2);
+      U.indexing(i, j, 3) = U.indexing(2 * int(1.0 / dx) + 6 - i, j, 3);
+    }
+  for (i = int(2.0 / dx) + 4; i <= int(2.0 / dx) + 6; i++)
+    for (j = int(0.5 / dy) + 4; j <= Ny + 6; j++) {
+      U.indexing(i, j, 0) = U.indexing(2 * int(2.0 / dx) + 6 - i, j, 0);
+      U.indexing(i, j, 1) = -U.indexing(2 * int(2.0 / dx) + 6 - i, j, 1);
+      U.indexing(i, j, 2) = U.indexing(2 * int(2.0 / dx) + 6 - i, j, 2);
+      U.indexing(i, j, 3) = U.indexing(2 * int(2.0 / dx) + 6 - i, j, 3);
+    }
+  //角点的虚拟网格特殊处理
+  int a, b;
+  a = int(1.0 / dx) + 2;  //角凸点(a,b)以及其附近虚拟节点处理,处理方法参考了教材相关内容
+  b = int(0.5 / dy) + 4;
+  for (k = 0; k <= 3; k++) {
+    U.indexing(a, b, k) = 0.5 * (U.indexing(a, b - 2, k) + U.indexing(a + 2, b, k));
+    U.indexing(a - 1, b, k) = U.indexing(a - 1, b - 2, k);
+    U.indexing(a - 2, b, k) = U.indexing(a - 2, b - 2, k);
+    U.indexing(a, b + 1, k) = U.indexing(a + 2, b + 1, k);
+    U.indexing(a, b + 2, k) = U.indexing(a + 2, b + 2, k);
+    U.indexing(a - 1, b + 1, k) = 0.5 * (U.indexing(a - 1, b - 3, k) + U.indexing(a + 3, b + 1, k));
+    U.indexing(a - 2, b + 1, k) = U.indexing(a - 2, b - 3, k);
+    U.indexing(a - 1, b + 2, k) = U.indexing(a + 3, b + 2, k);
+    U.indexing(a - 2, b + 2, k) = 0.5 * (U.indexing(a - 2, b - 4, k) + U.indexing(a + 4, b + 2, k));
+  }
+  U.indexing(a - 1, b, 2) = -U.indexing(a - 1, b - 2, 2);
+  U.indexing(a - 2, b, 2) = -U.indexing(a - 2, b - 2, 2);
+  U.indexing(a - 2, b + 1, 2) = -U.indexing(a - 2, b - 3, 2);
+  U.indexing(a, b + 1, 1) = -U.indexing(a + 2, b + 1, 1);
+  U.indexing(a, b + 2, 1) = -U.indexing(a + 2, b + 2, 1);
+  U.indexing(a - 1, b + 2, 1) = -U.indexing(a + 3, b + 2, 1);
+  a = int(2.0 / dx) + 4;
+  b = int(0.5 / dy) + 4;
+  for (k = 0; k <= 3; k++) {
+    U.indexing(a, b, k) = 0.5 * (U.indexing(a, b - 2, k) + U.indexing(a - 2, b, k));
+    U.indexing(a + 1, b, k) = U.indexing(a + 1, b - 2, k);
+    U.indexing(a + 2, b, k) = U.indexing(a + 2, b - 2, k);
+    U.indexing(a, b + 1, k) = U.indexing(a - 2, b + 1, k);
+    U.indexing(a, b + 2, k) = U.indexing(a - 2, b + 2, k);
+    U.indexing(a + 1, b + 1, k) = 0.5 * (U.indexing(a + 1, b - 3, k) + U.indexing(a - 3, b + 1, k));
+    U.indexing(a + 2, b + 1, k) = U.indexing(a + 2, b - 3, k);
+    U.indexing(a + 1, b + 2, k) = U.indexing(a - 3, b + 2, k);
+    U.indexing(a + 2, b + 2, k) = 0.5 * (U.indexing(a + 2, b - 4, k) + U.indexing(a - 4, b + 2, k));
+  }
+  U.indexing(a + 1, b, 2) = -U.indexing(a + 1, b - 2, 2);
+  U.indexing(a + 2, b, 2) = -U.indexing(a + 2, b - 2, 2);
+  U.indexing(a + 2, b + 1, 2) = -U.indexing(a + 2, b - 3, 2);
+  U.indexing(a, b + 1, 1) = -U.indexing(a - 2, b + 1, 1);
+  U.indexing(a, b + 2, 1) = -U.indexing(a - 2, b + 2, 1);
+  U.indexing(a + 1, b + 2, 1) = -U.indexing(a - 3, b + 2, 1);
+  //边界上强行赋法向为零
+  for (i = 3; i <= Nx + 3; i++) {
+    U.indexing(i, 3, 2) = 0;
+  }
+  for (i = 3; i <= int(1.0 / dx) + 2; i++) {
+    U.indexing(i, int(0.5 / dy) + 3, 2) = 0;
+  }
+  for (i = int(2.0 / dx) + 4; i <= Nx + 3; i++) {
+    U.indexing(i, int(0.5 / dy) + 3, 2) = 0;
+  }
+  for (i = int(1.0 / dx) + 3; i <= int(2.0 / dx) + 3; i++) {
+    U.indexing(i, Ny + 3, 2) = 0;
+  }
+  for (j = int(0.5 / dy) + 4; j <= Ny + 3; j++) {
+    U.indexing(int(1.0 / dx) + 3, j, 1) = 0;
+  }
+  for (j = int(0.5 / dy) + 4; j <= Ny + 3; j++) {
+    U.indexing(int(2.0 / dx) + 3, j, 1) = 0;
+  }
+}
 
 //求符号函数
 //出口:大于零返回1,小于零返回-1,等于零返回0
@@ -350,6 +567,25 @@ void virtual_clear(double*** U, double dx, double dy) {
   for (i = int(2.0 / dx) + 4; i <= int(2.0 / dx) + 6; i++)
     for (j = int(0.5 / dy) + 4; j <= Ny + 6; j++)
       for (k = 0; k <= 3; k++) U[i][j][k] = 0;
+}
+
+void virtual_clear_Tensor(Tensor& U, double dx, double dy) {
+  int i, j, k;
+  for (i = 3; i <= int(1.0 / dx) + 2; i++)  //为了显示正确,首先将虚拟节点赋0
+    for (j = int(0.5 / dy) + 4; j <= int(0.5 / dy) + 6; j++)
+      for (k = 0; k <= 3; k++) U.indexing(i, j, k) = 0;
+
+  for (i = int(2.0 / dx) + 4; i <= Nx + 6; i++)
+    for (j = int(0.5 / dy) + 4; j <= int(0.5 / dy) + 6; j++)
+      for (k = 0; k <= 3; k++) U.indexing(i, j, k) = 0;
+
+  for (i = int(1.0 / dx); i <= int(1.0 / dx) + 2; i++)
+    for (j = int(0.5 / dy) + 4; j <= Ny + 6; j++)
+      for (k = 0; k <= 3; k++) U.indexing(i, j, k) = 0;
+
+  for (i = int(2.0 / dx) + 4; i <= int(2.0 / dx) + 6; i++)
+    for (j = int(0.5 / dy) + 4; j <= Ny + 6; j++)
+      for (k = 0; k <= 3; k++) U.indexing(i, j, k) = 0;
 }
 
 struct timer {
