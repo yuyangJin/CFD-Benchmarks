@@ -14,31 +14,39 @@ double Fp[Nx + 7][Ny + 7][4], Fd[Nx + 7][Ny + 7][4];
 double Gp[Nx + 7][Ny + 7][4], Gd[Nx + 7][Ny + 7][4];
 
 timer func_timer;
+int case_id;
 
 void MUSCL_Solver(double U[Nx + 7][Ny + 7][4], double U_L[Nx + 7][Ny + 7][4], double U_R[Nx + 7][Ny + 7][4],
                   double Fp[Nx + 7][Ny + 7][4], double Fd[Nx + 7][Ny + 7][4], double F_[Nx + 7][Ny + 7][4],
                   double Gp[Nx + 7][Ny + 7][4], double Gd[Nx + 7][Ny + 7][4], double G_[Nx + 7][Ny + 7][4], double dx,
                   double dy, double& dt) {
-  bound(U, dx, dy);
+  bound(U, dx, dy, case_id);
   dt = CFL(U, dx, dy, MUSCLCFL);
   func_timer.start("MUSCL_x");
   MUSCL_x(U, U_L, U_R, F_, Fp, Fd, dx, dy, dt / 2.0);
   func_timer.stop("MUSCL_x");
-  bound(U, dx, dy);
+  bound(U, dx, dy, case_id);
   dt = CFL(U, dx, dy, MUSCLCFL);
   MUSCL_y(U, U_L, U_R, G_, Gp, Gd, dx, dy, dt / 2.0);
-  bound(U, dx, dy);
+  bound(U, dx, dy, case_id);
   dt = CFL(U, dx, dy, MUSCLCFL);
   MUSCL_y(U, U_L, U_R, G_, Gp, Gd, dx, dy, dt / 2.0);
-  bound(U, dx, dy);
+  bound(U, dx, dy, case_id);
   dt = CFL(U, dx, dy, MUSCLCFL);
   func_timer.start("MUSCL_x");
   MUSCL_x(U, U_L, U_R, F_, Fp, Fd, dx, dy, dt / 2.0);
   func_timer.stop("MUSCL_x");
-  bound(U, dx, dy);
+  bound(U, dx, dy, case_id);
 }
 
 int main(int argc, char** argv) {
+  if (argc != 2) {
+    printf("Please enter: \"./eno [case id]\" ");
+    return 0;
+  }
+
+  case_id = atoi(argv[1]);
+  
   double dx, dy, dt = 0, T = 0;
   initial(U, dx, dy);
 

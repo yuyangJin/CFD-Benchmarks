@@ -13,24 +13,32 @@ double Fp[Nx + 7][Ny + 7][4], Fd[Nx + 7][Ny + 7][4];
 double Gp[Nx + 7][Ny + 7][4], Gd[Nx + 7][Ny + 7][4];
 
 timer func_timer;
+int case_id;
 
 void NND_Solver(double U[Nx + 7][Ny + 7][4], double Fp[Nx + 7][Ny + 7][4], double Fd[Nx + 7][Ny + 7][4],
                 double Gp[Nx + 7][Ny + 7][4], double Gd[Nx + 7][Ny + 7][4], double dx, double dy, double& dt) {
-  bound(U, dx, dy);
+  bound(U, dx, dy, case_id);
   func_timer.start("NND_x");
   NND_x(U, Fp, Fd, dx, dy, dt);
   func_timer.stop("NND_x");
-  bound(U, dx, dy);
+  bound(U, dx, dy, case_id);
   NND_y(U, Gp, Gd, dx, dy, dt);
-  bound(U, dx, dy);
+  bound(U, dx, dy, case_id);
   NND_y(U, Gp, Gd, dx, dy, dt);
-  bound(U, dx, dy);
+  bound(U, dx, dy, case_id);
   func_timer.start("NND_x");
   NND_x(U, Fp, Fd, dx, dy, dt);
   func_timer.stop("NND_x");
 }
 
 int main(int argc, char** argv) {
+    if (argc != 2) {
+    printf("Please enter: \"./eno [case id]\" ");
+    return 0;
+  }
+
+  case_id = atoi(argv[1]);
+  
   double dx, dy, dt = 0, T = 0;
   initial(U, dx, dy);
 

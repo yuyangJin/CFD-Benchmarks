@@ -16,23 +16,25 @@ double Fp[Nx + 7][Ny + 7][4],
 double Gp[Nx + 7][Ny + 7][4], Gd[Nx + 7][Ny + 7][4];  // G表示y方向的量
 
 timer func_timer;
+int case_id;
+
 void Compact_Solver(double U[Nx + 7][Ny + 7][4], double Ut[Nx + 7][Ny + 7][4], double U1[Nx + 7][Ny + 7][4],
                     double U2[Nx + 7][Ny + 7][4], double Fp[Nx + 7][Ny + 7][4], double Fd[Nx + 7][Ny + 7][4],
                     double fp[Nx + 7][Ny + 7][4], double fd[Nx + 7][Ny + 7][4], double Gp[Nx + 7][Ny + 7][4],
                     double Gd[Nx + 7][Ny + 7][4], double gp[Nx + 7][Ny + 7][4], double gd[Nx + 7][Ny + 7][4], double dx,
                     double dy, double dt, double p[Nx + 7][Ny + 7]) {
-  bound(U, dx, dy);
+  bound(U, dx, dy, case_id);
   Compact_x(U, Ut, Fp, Fd, fp, fd, dx, dy, dt, p);
   func_timer.start("Compact_RK_x");
   Compact_RK_x(U, Ut, U1, U2, Fp, Fd, fp, fd, dx, dy, dt, p, LAMDA_);
   func_timer.stop("Compact_RK_x");
-  bound(U, dx, dy);
+  bound(U, dx, dy, case_id);
   Compact_y(U, Ut, Gp, Gd, gp, gd, dx, dy, dt, p);
   Compact_RK_y(U, Ut, U1, U2, Gp, Gd, gp, gd, dx, dy, dt, p, LAMDA_);
-  bound(U, dx, dy);
+  bound(U, dx, dy, case_id);
   Compact_y(U, Ut, Gp, Gd, gp, gd, dx, dy, dt, p);
   Compact_RK_y(U, Ut, U1, U2, Gp, Gd, gp, gd, dx, dy, dt, p, LAMDA_);
-  bound(U, dx, dy);
+  bound(U, dx, dy, case_id);
   Compact_x(U, Ut, Fp, Fd, fp, fd, dx, dy, dt, p);
   func_timer.start("Compact_RK_x");
   Compact_RK_x(U, Ut, U1, U2, Fp, Fd, fp, fd, dx, dy, dt, p, LAMDA_);
@@ -40,6 +42,13 @@ void Compact_Solver(double U[Nx + 7][Ny + 7][4], double Ut[Nx + 7][Ny + 7][4], d
 }
 
 int main(int argc, char** argv) {
+  if (argc != 2) {
+    printf("Please enter: \"./eno [case id]\" ");
+    return 0;
+  }
+
+  case_id = atoi(argv[1]);
+
   double dx, dy, dt = 0, T = 0;
   initial(U, dx, dy);
 

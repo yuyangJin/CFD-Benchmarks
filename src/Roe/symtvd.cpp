@@ -14,27 +14,36 @@ double g[Nx + 7][Ny + 7][4], gama_[Nx + 7][Ny + 7][4], Q_[Nx + 7][Ny + 7][4];
 double alpha_[Nx + 7][Ny + 7][4], theta[Nx + 7][Ny + 7][4];
 
 timer func_timer;
+int case_id;
+
 
 void SymTVD_Solver(double U[Nx + 7][Ny + 7][4], double U_[Nx + 7][Ny + 7][4], double LAMDA_[Nx + 7][Ny + 7][4][4],
                    double L_[Nx + 7][Ny + 7][4][4], double R_[Nx + 7][Ny + 7][4][4], double alpha_[Nx + 7][Ny + 7][4],
                    double g_[Nx + 7][Ny + 7][4], double Q_[Nx + 7][Ny + 7][4], double theta[Nx + 7][Ny + 7][4],
                    double F[Nx + 7][Ny + 7][4], double F_[Nx + 7][Ny + 7][4], double G[Nx + 7][Ny + 7][4],
                    double G_[Nx + 7][Ny + 7][4], double dx, double dy, double& dt, double a_[Nx + 7][Ny + 7][1]) {
-  bound(U, dx, dy);
+  bound(U, dx, dy, case_id);
   func_timer.start("SymTVD_x");
   SymTVD_x(U, U_, a_, LAMDA_, L_, R_, alpha_, g_, gama_, Q_, theta, F, F_, dx, dy, dt);
   func_timer.stop("SymTVD_x");
-  bound(U, dx, dy);
+  bound(U, dx, dy, case_id);
   SymTVD_y(U, U_, a_, LAMDA_, L_, R_, alpha_, g_, gama_, Q_, theta, G, G_, dx, dy, dt);
-  bound(U, dx, dy);
+  bound(U, dx, dy, case_id);
   SymTVD_y(U, U_, a_, LAMDA_, L_, R_, alpha_, g_, gama_, Q_, theta, G, G_, dx, dy, dt);
-  bound(U, dx, dy);
+  bound(U, dx, dy, case_id);
   func_timer.start("SymTVD_x");
   SymTVD_x(U, U_, a_, LAMDA_, L_, R_, alpha_, g_, gama_, Q_, theta, F, F_, dx, dy, dt);
   func_timer.stop("SymTVD_x");
 }
 
 int main(int argc, char** argv) {
+  if (argc != 2) {
+    printf("Please enter: \"./eno [case id]\" ");
+    return 0;
+  }
+
+  case_id = atoi(argv[1]);
+
   double dx, dy, dt = 0, T = 0;
   initial(U, dx, dy);
 

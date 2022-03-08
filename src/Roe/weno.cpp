@@ -20,6 +20,8 @@ double omegap[Nx + 7][Ny + 7][4][3], omegad[Nx + 7][Ny + 7][4][3];
 double alphap[Nx + 7][Ny + 7][4][3], alphad[Nx + 7][Ny + 7][4][3];
 
 timer func_timer;
+int case_id;
+
 void WENO_Solver(double U[Nx + 7][Ny + 7][4], double U1[Nx + 7][Ny + 7][4], double U2[Nx + 7][Ny + 7][4],
                  double ISp[Nx + 7][Ny + 7][4][3], double ISd[Nx + 7][Ny + 7][4][3],
                  double omegap[Nx + 7][Ny + 7][4][3], double omegad[Nx + 7][Ny + 7][4][3],
@@ -30,26 +32,33 @@ void WENO_Solver(double U[Nx + 7][Ny + 7][4], double U1[Nx + 7][Ny + 7][4], doub
                  double F_[Nx + 7][Ny + 7][4], double G[Nx + 7][Ny + 7][4], double G_[Nx + 7][Ny + 7][4],
                  double Gp[Nx + 7][Ny + 7][4], double Gd[Nx + 7][Ny + 7][4], double G_p[Nx + 7][Ny + 7][4],
                  double G_d[Nx + 7][Ny + 7][4], double dx, double dy, double& dt) {
-  bound(U, dx, dy);
+  bound(U, dx, dy, case_id);
   LF_x(U, LAMDA_, F, Fp, Fd);
   func_timer.start("WENO_x");
   WENO_x(U, ISp, ISd, omegap, omegad, alphap, alphad, q3p, q3d, Fp, Fd, F_p, F_d, F_, dx, dy, dt);
   func_timer.stop("WENO_x");
-  bound(U, dx, dy);
+  bound(U, dx, dy, case_id);
   LF_y(U, LAMDA_, G, Gp, Gd);
   WENO_y(U, ISp, ISd, omegap, omegad, alphap, alphad, q3p, q3d, Gp, Gd, G_p, G_d, G_, dx, dy, dt);
-  bound(U, dx, dy);
+  bound(U, dx, dy, case_id);
   LF_y(U, LAMDA_, G, Gp, Gd);
   WENO_y(U, ISp, ISd, omegap, omegad, alphap, alphad, q3p, q3d, Gp, Gd, G_p, G_d, G_, dx, dy, dt);
-  bound(U, dx, dy);
+  bound(U, dx, dy, case_id);
   LF_x(U, LAMDA_, F, Fp, Fd);
   func_timer.start("WENO_x");
   WENO_x(U, ISp, ISd, omegap, omegad, alphap, alphad, q3p, q3d, Fp, Fd, F_p, F_d, F_, dx, dy, dt);
   func_timer.stop("WENO_x");
-  bound(U, dx, dy);
+  bound(U, dx, dy, case_id);
 }
 
 int main(int argc, char** argv) {
+  if (argc != 2) {
+    printf("Please enter: \"./eno [case id]\" ");
+    return 0;
+  }
+
+  case_id = atoi(argv[1]);
+
   double dx, dy, dt = 0, T = 0;
   initial(U, dx, dy);
 

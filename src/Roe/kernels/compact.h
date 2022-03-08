@@ -813,7 +813,6 @@ void Compact_RK_y(double U[Nx + 7][Ny + 7][4], double Ut[Nx + 7][Ny + 7][4], dou
           U[i][j][k] = 1.0 / 3.0 * U[i][j][k] + 2.0 / 3.0 * U2[i][j][k] - 2.0 / 3.0 * r * (Gp[i][j][k] + Gd[i][j][k]);
 }
 
-
-#endif // COMPACT_FUSION
+#endif  // COMPACT_FUSION
 
 #endif
